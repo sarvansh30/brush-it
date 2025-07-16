@@ -1,1 +1,1 @@
-brush-it : collab and draw with your friends
+brush-it : collab and draw with your friendsz
