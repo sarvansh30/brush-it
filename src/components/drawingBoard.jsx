@@ -50,6 +50,7 @@ const DrawingBoard = ()=>{
             onMouseDown={startDrawing}
             onMouseMove={draw}
             onMouseUp={stopDrawing}
+            onMouseLeave={()=>setIsDrawing(false)}
             />
         </div>
     );
