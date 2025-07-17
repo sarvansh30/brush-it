@@ -5,7 +5,7 @@ import DrawingBoard from './components/drawingBoard'
 function App() {
 
   return (
-    <div className='border-0 border-black' >
+    <div className='' >
       <DrawingBoard/>
     </div>
   )
