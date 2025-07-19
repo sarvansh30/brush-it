@@ -25,6 +25,14 @@ const DrawingBoard = ()=>{
         context.beginPath();
 
         context.moveTo(offsetX,offsetY)
+         const startInfo = {
+        type: "DRAW_START",
+        offsetX: offsetX,
+        offsetY: offsetY
+    };
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        socketRef.current.send(JSON.stringify(startInfo));
+    }
     }
 
     const stopDrawing = ()=>{
@@ -37,12 +45,65 @@ const DrawingBoard = ()=>{
 
         const context = canvasRef.current.getContext('2d');
         const {offsetX,offsetY} = nativeEvent;
+        const drawInfo = {
+            type:"DRAW",
+            offsetX:offsetX,
+            offsetY:offsetY
+        }
         
         context.lineTo(offsetX,offsetY);
         
         context.stroke();
 
+        if(socketRef.current && socketRef.current.readyState ===WebSocket.OPEN){
+            socketRef.current.send(JSON.stringify(drawInfo));
+        }
+
     }
+
+    const drawRemote = (x,y)=>{
+        const context = canvasRef.current.getContext('2d');
+        context.lineTo(x,y);
+        context.stroke();
+    }
+    const socketRef = useRef(null);
+    useEffect(()=>{
+
+        const socket = new WebSocket('ws://localhost:3000');
+
+        socket.onopen = () =>{
+            console.log("Websocket connection established");
+        };
+
+        socket.onmessage = async (event) => {
+            const blob = await event.data.text();
+            const msg = JSON.parse(blob);
+           if(msg.type=="DRAW"){
+               const x = msg.offsetX;
+               const y = msg.offsetY;
+               drawRemote(x,y);
+           }
+           if (msg.type=="DRAW_START"){
+            const x=msg.offsetX;
+            const y = msg.offsetY;
+            context.beginPath();
+            context.moveTo(x,y);
+           }
+        }
+        
+        // socket.send();
+
+        socket.onclose = () =>{
+            console.log('Websocket closed');
+        };
+
+        socketRef.current = socket;
+
+        return ()=>{
+            socket.close();
+        };
+
+    },[]);
 
     return(
         <div  >
