@@ -66,6 +66,7 @@ const DrawingBoard = ()=>{
         context.lineTo(x,y);
         context.stroke();
     }
+
     const socketRef = useRef(null);
     useEffect(()=>{
 
@@ -76,19 +77,24 @@ const DrawingBoard = ()=>{
         };
 
         socket.onmessage = async (event) => {
+            const context = canvasRef.current.getContext('2d');
             const blob = await event.data.text();
+
             const msg = JSON.parse(blob);
-           if(msg.type=="DRAW"){
-               const x = msg.offsetX;
-               const y = msg.offsetY;
-               drawRemote(x,y);
-           }
-           if (msg.type=="DRAW_START"){
+            if (msg.type=="DRAW_START"){
+                // console.log("draw start");
             const x=msg.offsetX;
             const y = msg.offsetY;
             context.beginPath();
             context.moveTo(x,y);
            }
+           if(msg.type=="DRAW"){
+               const x = msg.offsetX;
+               const y = msg.offsetY;
+               
+               drawRemote(x,y);
+           }
+           
         }
         
         // socket.send();
