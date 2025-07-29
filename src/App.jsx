@@ -5,13 +5,16 @@ import ToolBar from './components/Toolbar'
 
 function App() {
 
-const [currTool,SetCurrTool] = useState("DRAW");
+const [currTool,SetCurrTool] = useState(0);
 
+  useEffect(()=>{
+    
+  },[currTool]);
 
   return (
     <div className='' >
       <DrawingBoard />
-      <ToolBar SetCurrTool={SetCurrTool} />
+      <ToolBar currTool={currTool} SetCurrTool={SetCurrTool} />
     </div>
   )
 }
