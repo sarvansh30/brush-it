@@ -1,134 +1,119 @@
 import React, { useRef, useState, useEffect, useContext } from 'react';
 import { ToolContext } from '../ToolContext';
+import { io } from 'socket.io-client';
 
-const DrawingBoard = ()=>{
+const DrawingBoard = () => {
+    const { tool, color, strokeWidth } = useContext(ToolContext);
+    const canvasRef = useRef(null);
+    const socketRef = useRef(null);
+    const lastPointRef = useRef(null);
+    const [isDrawing, setIsDrawing] = useState(false);
 
-    const {tool,color,strokeWidth} = useContext(ToolContext);
-    const canvasRef = useRef(null)
-    const [isDrawing,setIsDrawing] = useState(false);
-
-    useEffect(()=>{
+    useEffect(() => {
         const canvas = canvasRef.current;
         const context = canvas.getContext('2d');
-
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
+    }, []);
 
-        
-        
-    },[])
-    
-    useEffect(()=>{
+    useEffect(() => {
         const canvas = canvasRef.current;
-  const context = canvas.getContext('2d');
+        const context = canvas.getContext('2d');
         context.strokeStyle = color;
         context.lineWidth = strokeWidth;
-    },[color,strokeWidth])
-    const startDrawing = ({nativeEvent})=>{
-        setIsDrawing(true);
+    }, [color, strokeWidth]);
 
-        const {offsetX,offsetY} = nativeEvent;
-        const context = canvasRef.current.getContext('2d');
-
-        context.beginPath();
-
-        context.moveTo(offsetX,offsetY)
-         const startInfo = {
-        type: "DRAW_START",
-        offsetX: offsetX,
-        offsetY: offsetY
-    };
-    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-        socketRef.current.send(JSON.stringify(startInfo));
-    }
-    }
-
-    const stopDrawing = ()=>{
-        setIsDrawing(false);
-    }
-
-    const draw = ({nativeEvent}) =>{
-
-        if(!isDrawing) return;
-
-        const context = canvasRef.current.getContext('2d');
-        const {offsetX,offsetY} = nativeEvent;
-        const drawInfo = {
-            type:"DRAW",
-            offsetX:offsetX,
-            offsetY:offsetY
-        }
-        
-        context.lineTo(offsetX,offsetY);
-        
-        context.stroke();
-
-        if(socketRef.current && socketRef.current.readyState ===WebSocket.OPEN){
-            socketRef.current.send(JSON.stringify(drawInfo));
-        }
-
-    }
-
-    const drawRemote = (x,y)=>{
-        const context = canvasRef.current.getContext('2d');
-        context.lineTo(x,y);
-        context.stroke();
-    }
-
-    const socketRef = useRef(null);
-    useEffect(()=>{
-
-        const socket = new WebSocket('ws://localhost:3000');
-
-        socket.onopen = () =>{
-            console.log("Websocket connection established");
-        };
-
-        socket.onmessage = async (event) => {
-            const context = canvasRef.current.getContext('2d');
-            const blob = await event.data.text();
-
-            const msg = JSON.parse(blob);
-            if (msg.type=="DRAW_START"){
-                // console.log("draw start");
-            const x=msg.offsetX;
-            const y = msg.offsetY;
-            context.beginPath();
-            context.moveTo(x,y);
-           }
-           if(msg.type=="DRAW"){
-               const x = msg.offsetX;
-               const y = msg.offsetY;
-               
-               drawRemote(x,y);
-           }
-           
-        }
-        
-        // socket.send();
-
-        socket.onclose = () =>{
-            console.log('Websocket closed');
-        };
-
+    useEffect(() => {
+        const socket = io('http://localhost:3000');
         socketRef.current = socket;
 
-        return ()=>{
-            socket.close();
+        socket.on('connect', () => {
+            console.log("Connected to brush-it backend using socket.io!");
+        });
+
+        socket.on('DRAW_ACTION', (data) => {
+            drawRemote(data);
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Disconnected from server');
+        });
+
+        return () => {
+            socket.disconnect();
         };
+    }, []);
 
-    },[]);
+    const startDrawing = ({ nativeEvent }) => {
+        const context = canvasRef.current.getContext('2d');
+        const { offsetX, offsetY } = nativeEvent;
 
-    return(
-        <div  >
-            <canvas ref={canvasRef} 
-            onMouseDown={startDrawing}
-            onMouseMove={draw}
-            onMouseUp={stopDrawing}
-            onMouseLeave={()=>setIsDrawing(false)}
+        if (tool === 'ERASE') {
+            context.globalCompositeOperation = 'destination-out';
+        } else {
+            context.globalCompositeOperation = 'source-over';
+        }
+
+        setIsDrawing(true);
+        context.beginPath();
+        context.moveTo(offsetX, offsetY);
+        lastPointRef.current = { x: offsetX, y: offsetY };
+    };
+
+    const stopDrawing = () => {
+        setIsDrawing(false);
+        lastPointRef.current = null;
+    };
+
+    const draw = ({ nativeEvent }) => {
+        if (!isDrawing) return;
+
+        const context = canvasRef.current.getContext('2d');
+        const { offsetX, offsetY } = nativeEvent;
+
+        context.lineTo(offsetX, offsetY);
+        context.stroke();
+
+        if (socketRef.current && lastPointRef.current) {
+            socketRef.current.emit('DRAW_ACTION', {
+                from: lastPointRef.current,
+                to: { x: offsetX, y: offsetY },
+                color: color,
+                strokeWidth: strokeWidth,
+                tool: tool,
+            });
+        }
+
+        lastPointRef.current = { x: offsetX, y: offsetY };
+    };
+
+    const drawRemote = (data) => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const context = canvas.getContext('2d');
+
+        context.save();
+        context.strokeStyle = data.color;
+        context.lineWidth = data.strokeWidth;
+        context.globalCompositeOperation = data.tool === 'ERASE' ? 'destination-out' : 'source-over';
+        context.beginPath();
+        context.moveTo(data.from.x, data.from.y);
+        context.lineTo(data.to.x, data.to.y);
+        context.stroke();
+        context.restore();
+    };
+
+    return (
+        <div>
+            <canvas
+                ref={canvasRef}
+                onMouseDown={startDrawing}
+                onMouseMove={draw}
+                onMouseUp={stopDrawing}
+                onMouseLeave={stopDrawing}
             />
         </div>
     );
-}
+};
 
 export default DrawingBoard;

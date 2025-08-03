@@ -1,29 +1,27 @@
+const { Server } = require('socket.io');
 
-const {WebSocketServer,WebSocket} = require('ws');
+const initializeSocketIO = (server) => {
+  const io = new Server(server, {
+
+    cors: {
+      origin: "http://localhost:5173",
+      methods: ["GET", "POST"]
+    }
+  });
+
+  io.on('connection', (socket) => {
+    console.log('New client connected with socket.io:', socket.id);
 
 
-const intializeWebsocket = (server)=>{
+    socket.on('DRAW_ACTION', (data) => {
 
-const wss = new WebSocketServer({server});
-
-wss.on('connection',(ws)=>{
-    console.log("New client connected");
-    
-
-    ws.on('message',(message)=>{
-
-        wss.clients.forEach(client=>{
-            if(client!=ws && client.readyState===WebSocket.OPEN){
-                client.send(message);
-            }
-        });
+      socket.broadcast.emit('DRAW_ACTION', data);
     });
 
-    ws.on('close',()=>{
-        console.log("client disconnected");
+    socket.on('disconnect', () => {
+      console.log('Client disconnected:', socket.id);
     });
-});
-
+  });
 };
 
-module.exports = {intializeWebsocket};
+module.exports = { initializeSocketIO };
