@@ -2,20 +2,21 @@ import { useState } from 'react'
 import './App.css'
 import DrawingBoard from './components/drawingBoard'
 import ToolBar from './components/Toolbar'
+import { ToolProvider } from './ToolProvider'
 
 function App() {
 
-const [currTool,SetCurrTool] = useState(0);
-
-  useEffect(()=>{
+  // useEffect(()=>{
     
-  },[currTool]);
+  // },[currTool]);
 
   return (
+    <ToolProvider>
     <div className='' >
       <DrawingBoard />
-      <ToolBar currTool={currTool} SetCurrTool={SetCurrTool} />
+      <ToolBar />
     </div>
+    </ToolProvider>
   )
 }
 

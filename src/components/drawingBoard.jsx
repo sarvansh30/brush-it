@@ -1,6 +1,9 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useContext } from 'react';
+import { ToolContext } from '../ToolContext';
 
 const DrawingBoard = ()=>{
+
+    const {tool,color,strokeWidth} = useContext(ToolContext);
     const canvasRef = useRef(null)
     const [isDrawing,setIsDrawing] = useState(false);
 
@@ -11,11 +14,16 @@ const DrawingBoard = ()=>{
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
 
-        context.strokeStyle = "black";
-        context.lineWidth = 5;
+        
         
     },[])
     
+    useEffect(()=>{
+        const canvas = canvasRef.current;
+  const context = canvas.getContext('2d');
+        context.strokeStyle = color;
+        context.lineWidth = strokeWidth;
+    },[color,strokeWidth])
     const startDrawing = ({nativeEvent})=>{
         setIsDrawing(true);
 
