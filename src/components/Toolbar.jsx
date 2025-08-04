@@ -9,6 +9,16 @@ const ToolBar = () =>{
 
         <button className="hover:bg-amber-200 hover:cursor-pointer" onClick={()=>setTool('DRAW')}>Draw</button>
         <button className="hover:bg-amber-200 hover:cursor-pointer" onClick={()=>setTool("ERASE")}>Erase</button>
+        <p>Stroke: </p>
+        <input 
+        type="range" 
+        name="strokeWidth" 
+        id="strokeWidth"
+        min='1'
+        max='50'
+        value={strokeWidth}
+        defaultValue={5}
+        onChange={(e)=>setStrokeWidth(parseInt(e.target.value,10))} />
 
         </div>
     );
