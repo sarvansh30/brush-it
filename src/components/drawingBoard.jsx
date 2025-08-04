@@ -23,6 +23,8 @@ const DrawingBoard = () => {
         context.lineWidth = strokeWidth;
     }, [color, strokeWidth]);
 
+    const canvasHistory = [];
+
     useEffect(() => {
         const socket = io('http://localhost:3000');
         socketRef.current = socket;
@@ -30,7 +32,11 @@ const DrawingBoard = () => {
         socket.on('connect', () => {
             console.log("Connected to brush-it backend using socket.io!");
         });
-
+        
+        socket.on('CANVAS_HISTORY',(arr)=>{
+            arr.forEach(drawRemote);
+        });
+        
         socket.on('DRAW_ACTION', (data) => {
             drawRemote(data);
         });
@@ -96,6 +102,7 @@ const DrawingBoard = () => {
         context.strokeStyle = data.color;
         context.lineWidth = data.strokeWidth;
         context.globalCompositeOperation = data.tool === 'ERASE' ? 'destination-out' : 'source-over';
+        
         context.beginPath();
         context.moveTo(data.from.x, data.from.y);
         context.lineTo(data.to.x, data.to.y);

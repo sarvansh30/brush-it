@@ -9,12 +9,15 @@ const initializeSocketIO = (server) => {
     }
   });
 
+  const canvasHistory = [];
+
   io.on('connection', (socket) => {
     console.log('New client connected with socket.io:', socket.id);
 
+    socket.emit('CANVAS_HISTORY', canvasHistory);
 
     socket.on('DRAW_ACTION', (data) => {
-
+      canvasHistory.push(data);
       socket.broadcast.emit('DRAW_ACTION', data);
     });
 
