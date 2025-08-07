@@ -23,8 +23,6 @@ const DrawingBoard = () => {
         context.lineWidth = strokeWidth;
     }, [color, strokeWidth]);
 
-    const canvasHistory = [];
-
     useEffect(() => {
         const socket = io('http://localhost:3000');
         socketRef.current = socket;
@@ -36,7 +34,7 @@ const DrawingBoard = () => {
         socket.on('CANVAS_HISTORY',(arr)=>{
             arr.forEach(drawRemote);
         });
-        
+
         socket.on('DRAW_ACTION', (data) => {
             drawRemote(data);
         });

@@ -23,7 +23,7 @@ const ToolBar = () =>{
         onChange={(e)=>setStrokeWidth(parseInt(e.target.value,10))} />
 
         <p>Color:</p>
-        <input 
+        <input  
         type="color"
          name="color"
           id="color"
