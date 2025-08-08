@@ -21,9 +21,9 @@ const initializeSocketIO = (server) => {
       socket.broadcast.emit('DRAW_ACTION', data);
     });
 
-    socket.on('RESET_CANVAS',()=>{
+    socket.on('CANVAS_RESET',()=>{
       canvasHistory.length = 0; 
-      io.emit('CANVAS_HISTORY', canvasHistory); 
+      io.emit('CANVAS_RESET'); 
     })
     
     socket.on('disconnect', () => {

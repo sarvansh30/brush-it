@@ -1,8 +1,16 @@
+import { SocketContext } from "../SocketContext";
 import { ToolContext } from "../ToolContext";
 import React, { useContext } from 'react';
 
 const ToolBar = () =>{
     const {tool,setTool,color,setColor,strokeWidth,setStrokeWidth} = useContext(ToolContext);
+    const socket = useContext(SocketContext);
+
+    const handleReset = ()=>{
+        if (socket){
+        socket.emit('CANVAS_RESET');
+        }
+    };
 
     return(
         <div className="fixed bottom-16 left-1/2 -translate-x-1/2  p-2 rounded-xl border-1 flex gap-7">
@@ -31,6 +39,8 @@ const ToolBar = () =>{
           value={color}
           onChange={(e)=>setColor(e.target.value)} />
         
+
+        <button className="hover:cursor-pointer" onClick={handleReset}>RESET</button>
         </div>
     );
 };

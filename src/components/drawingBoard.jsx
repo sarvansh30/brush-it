@@ -22,9 +22,9 @@ const DrawingBoard = () => {
         socket.on('CANVAS_HISTORY',(data)=>{
             data.forEach(drawRemote);
         });
-        socket.on('CANVAS_RESET',(data)=>{
+        socket.on('CANVAS_RESET',()=>{
             const canvas = canvasRef.current;
-            const context = canvas.getCurrent('2d');
+            const context = canvas.getContext('2d');
             context.clearRect(0,0,canvas.width, canvas.height);
         });
 
