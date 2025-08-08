@@ -1,23 +1,25 @@
-import { useState } from 'react'
-import './App.css'
-import DrawingBoard from './components/drawingBoard'
-import ToolBar from './components/Toolbar'
-import { ToolProvider } from './ToolProvider'
+import { useState } from "react";
+import "./App.css";
+import DrawingBoard from "./components/drawingBoard";
+import ToolBar from "./components/Toolbar";
+import { ToolProvider } from "./ToolProvider";
+import { SocketProvider } from "./SocketProvider";
 
 function App() {
-
   // useEffect(()=>{
-    
+
   // },[currTool]);
 
   return (
-    <ToolProvider>
-    <div className='' >
-      <DrawingBoard />
-      <ToolBar />
-    </div>
-    </ToolProvider>
-  )
+    <SocketProvider>
+      <ToolProvider>
+        <div className="">
+          <DrawingBoard />
+          <ToolBar />
+        </div>
+      </ToolProvider>
+    </SocketProvider>
+  );
 }
 
-export default App
+export default App;

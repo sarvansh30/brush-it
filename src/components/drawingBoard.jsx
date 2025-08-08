@@ -1,13 +1,39 @@
 import React, { useRef, useState, useEffect, useContext } from 'react';
 import { ToolContext } from '../ToolContext';
-import { io } from 'socket.io-client';
+import { SocketContext } from '../SocketContext';
+
 
 const DrawingBoard = () => {
     const { tool, color, strokeWidth } = useContext(ToolContext);
+    const socket = useContext(SocketContext);
+
     const canvasRef = useRef(null);
-    const socketRef = useRef(null);
     const lastPointRef = useRef(null);
     const [isDrawing, setIsDrawing] = useState(false);
+
+    useEffect(()=>{
+
+        if (!socket) return;
+
+        socket.on('DRAW_ACTION', (data)=>{
+            drawRemote(data);
+        });
+
+        socket.on('CANVAS_HISTORY',(data)=>{
+            data.forEach(drawRemote);
+        });
+        socket.on('CANVAS_RESET',(data)=>{
+            const canvas = canvasRef.current;
+            const context = canvas.getCurrent('2d');
+            context.clearRect(0,0,canvas.width, canvas.height);
+        });
+
+        return ()=>{
+            socket.off('CANVAS_HISTORY');
+            socket.off('DRAW_ACTION');
+            socket.off('CANVAS_RESET');
+        }
+    },[socket]);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -22,31 +48,6 @@ const DrawingBoard = () => {
         context.strokeStyle = color;
         context.lineWidth = strokeWidth;
     }, [color, strokeWidth]);
-
-    useEffect(() => {
-        const socket = io('http://localhost:3000');
-        socketRef.current = socket;
-
-        socket.on('connect', () => {
-            console.log("Connected to brush-it backend using socket.io!");
-        });
-        
-        socket.on('CANVAS_HISTORY',(arr)=>{
-            arr.forEach(drawRemote);
-        });
-
-        socket.on('DRAW_ACTION', (data) => {
-            drawRemote(data);
-        });
-
-        socket.on('disconnect', () => {
-            console.log('Disconnected from server');
-        });
-
-        return () => {
-            socket.disconnect();
-        };
-    }, []);
 
     const startDrawing = ({ nativeEvent }) => {
         const context = canvasRef.current.getContext('2d');
@@ -78,8 +79,8 @@ const DrawingBoard = () => {
         context.lineTo(offsetX, offsetY);
         context.stroke();
 
-        if (socketRef.current && lastPointRef.current) {
-            socketRef.current.emit('DRAW_ACTION', {
+        if (socket && lastPointRef.current) {
+            socket.emit('DRAW_ACTION', {
                 from: lastPointRef.current,
                 to: { x: offsetX, y: offsetY },
                 color: color,
