@@ -9,21 +9,26 @@ const initializeSocketIO = (server) => {
     }
   });
 
-  const canvasHistory = [];
+  const pathHistory = [];
 
   io.on('connection', (socket) => {
     console.log('New client connected with socket.io:', socket.id);
 
-    socket.emit('CANVAS_HISTORY', canvasHistory);
+    socket.emit('CANVAS_HISTORY', pathHistory);
 
     socket.on('DRAW_ACTION', (data) => {
-      canvasHistory.push(data);
+      // pathHistory.push(data);
       socket.broadcast.emit('DRAW_ACTION', data);
     });
 
     socket.on('CANVAS_RESET',()=>{
-      canvasHistory.length = 0; 
+      pathHistory.length = 0; 
       io.emit('CANVAS_RESET'); 
+    })
+
+    socket.on('DRAW_PATH',(data)=>{
+      pathHistory.push(data);
+      // console.log('Received DRAW_PATH:', pathHistory);
     })
     
     socket.on('disconnect', () => {

@@ -11,6 +11,8 @@ const DrawingBoard = () => {
     const lastPointRef = useRef(null);
     const [isDrawing, setIsDrawing] = useState(false);
 
+    const pathHistory = useRef([]);
+
     useEffect(()=>{
 
         if (!socket) return;
@@ -19,8 +21,10 @@ const DrawingBoard = () => {
             drawRemote(data);
         });
 
-        socket.on('CANVAS_HISTORY',(data)=>{
-            data.forEach(drawRemote);
+        socket.on('CANVAS_HISTORY',(historyData)=>{
+            historyData.forEach((historyItem)=>{
+                drawHistory(historyItem);
+            })
         });
         socket.on('CANVAS_RESET',()=>{
             const canvas = canvasRef.current;
@@ -47,11 +51,13 @@ const DrawingBoard = () => {
         const context = canvas.getContext('2d');
         context.strokeStyle = color;
         context.lineWidth = strokeWidth;
+        context.lineCap = 'round';
     }, [color, strokeWidth]);
 
     const startDrawing = ({ nativeEvent }) => {
         const context = canvasRef.current.getContext('2d');
         const { offsetX, offsetY } = nativeEvent;
+        pathHistory.current = [{x: offsetX, y: offsetY}];
 
         if (tool === 'ERASE') {
             context.globalCompositeOperation = 'destination-out';
@@ -68,6 +74,16 @@ const DrawingBoard = () => {
     const stopDrawing = () => {
         setIsDrawing(false);
         lastPointRef.current = null;
+        console.log(pathHistory.current);
+        if(socket && pathHistory.current.length>0){
+            socket.emit('DRAW_PATH',{
+                path:pathHistory.current,
+                tool:tool,
+                color:color,
+                strokeWidth:strokeWidth,
+            });
+        }
+        pathHistory.current = [];
     };
 
     const draw = ({ nativeEvent }) => {
@@ -88,7 +104,7 @@ const DrawingBoard = () => {
                 tool: tool,
             });
         }
-
+        pathHistory.current.push({ x: offsetX, y: offsetY });
         lastPointRef.current = { x: offsetX, y: offsetY };
     };
 
@@ -108,6 +124,26 @@ const DrawingBoard = () => {
         context.stroke();
         context.restore();
     };
+
+    const drawHistory = (historyData) =>{
+        const canvas = canvasRef.current;
+        const context = canvas.getContext('2d');
+        
+        context.save();
+        context.strokeStyle = historyData.color;
+        context.lineWidth = historyData.strokeWidth;
+        context.globalCompositeOperation = historyData.tool === 'ERASE' ? 'destination-out' : 'source-over';
+
+        context.beginPath();
+        context.moveTo(historyData.path[0].x,historyData.path[0].y);
+
+        for(let i=1;i<historyData.path.length;i++){
+            context.lineTo(historyData.path[i].x,historyData.path[i].y);
+        }
+
+        context.stroke();
+        context.restore();
+        };
 
     return (
         <div>
