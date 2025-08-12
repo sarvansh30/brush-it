@@ -12,6 +12,18 @@ const ToolBar = () =>{
         }
     };
 
+    const handleUndo = () =>{
+        if(socket){
+            socket.emit('UNDO_ACTION');
+        }
+    };
+    
+    const handleRedo = ()=>{
+        if(socket){
+            socket.emit("REDO_ACTION");
+        }
+    };
+
     return(
         <div className="fixed bottom-16 left-1/2 -translate-x-1/2  p-2 rounded-xl border-1 flex gap-7">
 
@@ -41,6 +53,10 @@ const ToolBar = () =>{
         
 
         <button className="hover:cursor-pointer" onClick={handleReset}>RESET</button>
+
+         <button className='hover:cursor-pointer' onClick={handleUndo}>Undo</button>
+
+         <button className='hover:cursor-pointer' onClick={handleRedo}>Redo</button>
         </div>
     );
 };

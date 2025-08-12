@@ -22,6 +22,9 @@ const DrawingBoard = () => {
         });
 
         socket.on('CANVAS_HISTORY',(historyData)=>{
+            const canvas = canvasRef.current;
+            const context = canvas.getContext('2d');
+            context.clearRect(0,0,canvas.width, canvas.height);
             historyData.forEach((historyItem)=>{
                 drawHistory(historyItem);
             })
@@ -32,6 +35,7 @@ const DrawingBoard = () => {
             context.clearRect(0,0,canvas.width, canvas.height);
         });
 
+       
         return ()=>{
             socket.off('CANVAS_HISTORY');
             socket.off('DRAW_ACTION');
