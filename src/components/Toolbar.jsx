@@ -1,26 +1,29 @@
 import { SocketContext } from "../SocketContext";
 import { ToolContext } from "../ToolContext";
 import React, { useContext } from 'react';
+import { useParams } from "react-router-dom";
 
 const ToolBar = () =>{
     const {tool,setTool,color,setColor,strokeWidth,setStrokeWidth} = useContext(ToolContext);
     const socket = useContext(SocketContext);
+    
+    const { roomid } = useParams();
 
     const handleReset = ()=>{
         if (socket){
-        socket.emit('CANVAS_RESET');
+        socket.emit('CANVAS_RESET',roomid);
         }
     };
 
     const handleUndo = () =>{
         if(socket){
-            socket.emit('UNDO_ACTION');
+            socket.emit('UNDO_ACTION',roomid);
         }
     };
     
     const handleRedo = ()=>{
         if(socket){
-            socket.emit("REDO_ACTION");
+            socket.emit("REDO_ACTION",roomid);
         }
     };
 
