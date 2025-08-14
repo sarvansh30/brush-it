@@ -20,11 +20,12 @@ const initializeSocketIO = (server) => {
     socket.on('JOIN_ROOM',(roomid)=>{
       if(rooms.has(roomid)){
         socket.join(roomid);
-        socket.emit('CANVAS_HISOTRY', rooms.get(roomid).history);
+        socket.emit('CANVAS_HISTORY', rooms.get(roomid).pathHistory);
         console.log(`Client ${socket.id} joined room ${roomid}`);
       }
       else{
-        rooms.set(roomid,{history:[],redoStack:[]});
+        rooms.set(roomid,{pathHistory:[],redoStack:[]});
+        socket.emit('CANVAS_HISTORY', rooms.get(roomid).pathHistory);
         console.log(`Room ${roomid} created and client ${socket.id} joined`);
         socket.join(roomid);
       }
@@ -34,32 +35,32 @@ const initializeSocketIO = (server) => {
 
     socket.on('DRAW_ACTION', (data) => {
       // pathHistory.push(data);
-      socket.to(roomid).broadcast.emit('DRAW_ACTION', data);
+      socket.to(data.roomid).emit('DRAW_ACTION', data.strokeData);
     });
 
-    socket.on('CANVAS_RESET',()=>{
-      pathHistory.length = 0; 
+    socket.on('CANVAS_RESET',(roomid)=>{
+      rooms.get(roomid).pathHistory.length = 0; 
       io.to(roomid).emit('CANVAS_RESET'); 
     })
 
     socket.on('DRAW_PATH',(data)=>{
-      rooms.get(roomid).history.push(data);
+      rooms.get(data.roomid).pathHistory.push(data.strokeData);
       // console.log('Received DRAW_PATH:', pathHistory);
     })
 
-    socket.on('UNDO_ACTION',()=>{
-      if (rooms.get(roomid).history.length>0){
-        const lastAction = rooms.get(roomid).history.pop();
+    socket.on('UNDO_ACTION',(roomid)=>{
+      if (rooms.get(roomid).pathHistory.length>0){
+        const lastAction = rooms.get(roomid).pathHistory.pop();
         rooms.get(roomid).redoStack.push(lastAction);
-        io.to(roomid).emit('CANVAS_HISTORY', pathHistory);
+        io.to(roomid).emit('CANVAS_HISTORY', rooms.get(roomid).pathHistory);
       }
     });
     
-    socket.on('REDO_ACTION',()=>{
-      if (redoStack.length > 0) {
+    socket.on('REDO_ACTION',(roomid)=>{
+      if (rooms.get(roomid).redoStack.length > 0) {
         const lastAction = rooms.get(roomid).redoStack.pop();
-        rooms.get(roomid).history.push(lastAction);
-        io.to(roomid).emit('CANVAS_HISTORY', pathHistory);
+        rooms.get(roomid).pathHistory.push(lastAction);
+        io.to(roomid).emit('CANVAS_HISTORY', rooms.get(roomid).pathHistory);
       }
     });
     

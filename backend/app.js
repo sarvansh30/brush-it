@@ -18,9 +18,6 @@ app.post('/room/create-room',(req,res)=>{
     });
 });
 
-app.get('/room/:roomId',(req,res)=>{
-    const roomId = req.params.roomId;
 
-});
 
 module.exports =app;
