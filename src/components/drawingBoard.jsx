@@ -23,19 +23,101 @@ const DrawingBoard = () => {
       drawRemote(data);
     });
 
-    socket.on("CANVAS_HISTORY", (historyData) => {
-      const canvas = canvasRef.current;
-      const context = canvas.getContext("2d");
-      context.clearRect(0, 0, canvas.width, canvas.height);
-      historyData.forEach((historyItem) => {
-        drawHistory(historyItem);
-      });
-    });
+    socket.on("CANVAS_HISTORY", (data) => {
+    const { baseImageURL, history } = data;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const context = canvas.getContext("2d");
+
+    // Always clear the canvas first
+    context.clearRect(0, 0, canvas.width, canvas.height);
+
+    // This function will draw the recent strokes
+    const drawRecentHistory = () => {
+        if (history && history.length > 0) {
+            history.forEach((strokeData) => {
+                drawHistory(strokeData);
+            });
+        }
+    };
+
+    // Check if there is a base image to draw
+    if (baseImageURL) {
+        // 1. Create a new Image object
+        const image = new Image();
+        
+        // 2. Define the onload handler BEFORE setting the src
+        image.onload = () => {
+            // This code only runs AFTER the image is fully loaded
+            context.drawImage(image, 0, 0);
+            // 4. Now, draw the recent strokes on top of the image
+            drawRecentHistory();
+        };
+        
+        // Add an error handler for debugging
+        image.onerror = () => {
+            console.error("Failed to load base image from URL.");
+            // Still draw the history even if the image fails
+            drawRecentHistory();
+        };
+
+        // 3. Set the image source to start the download
+        image.src = baseImageURL;
+    } else {
+        // If there's no base image, just draw the history on a blank canvas
+        drawRecentHistory();
+    }
+});
+
     socket.on("CANVAS_RESET", () => {
       const canvas = canvasRef.current;
       const context = canvas.getContext("2d");
       context.clearRect(0, 0, canvas.width, canvas.height);
     });
+
+    socket.on("CREATE_SNAPSHOT", (data) => {
+    const { baseImageURL, strokesToSave } = data;
+
+    const offscreenCanvas = document.createElement('canvas');
+    const visibleCanvas = canvasRef.current;
+
+    offscreenCanvas.width = visibleCanvas.width;
+    offscreenCanvas.height = visibleCanvas.height;
+
+    const ctx = offscreenCanvas.getContext('2d');
+
+    // This function draws the strokes, generates the URL, and sends it back.
+    const createImageUrl = () => {
+        // Draw the strokes that the server sent.
+        strokesToSave.forEach(stroke => drawStrokeOnContext(ctx, stroke));
+
+        // Generate the new image from the hidden canvas's content.
+        const newSnapshotURL = offscreenCanvas.toDataURL('image/webp', 0.8);
+
+        // Send the newly created image URL back to the server.
+        socket.emit('SUBMIT_SNAPSHOT', { roomid: roomid, newSnapshotURL: newSnapshotURL });
+    };
+
+    // If a base image exists, draw it first. Otherwise, just draw the strokes.
+    if (baseImageURL) {
+        const image = new Image();
+        image.src = baseImageURL;
+        image.onload = () => {
+            // Draw the old snapshot onto the hidden canvas.
+            ctx.drawImage(image, 0, 0);
+            // Now draw the new strokes on top.
+            createImageUrl();
+        };
+        image.onerror = () => {
+            // If the old image fails to load, just draw the strokes anyway.
+            createImageUrl();
+        };
+    } else {
+        // If there's no base image, just draw the strokes on a blank canvas.
+        createImageUrl();
+    }
+});
 
     return () => {
       socket.off("CANVAS_HISTORY");
@@ -59,6 +141,25 @@ const DrawingBoard = () => {
     context.lineCap = "round";
   }, [color, strokeWidth]);
 
+  const drawStrokeOnContext = (context, data) => {
+        context.save();
+        
+        context.strokeStyle = data.color;
+        context.lineWidth = data.strokeWidth;
+        context.lineCap = 'round';
+        context.globalCompositeOperation = data.tool === 'ERASE' ? 'destination-out' : 'source-over';
+        
+        context.beginPath();
+        context.moveTo(data.path[0].x, data.path[0].y);
+
+        for (let i = 1; i < data.path.length; i++) {
+            context.lineTo(data.path[i].x, data.path[i].y);
+        }
+        
+        context.stroke();
+        context.restore();
+    };
+
   const startDrawing = ({ nativeEvent }) => {
     const context = canvasRef.current.getContext("2d");
     const { offsetX, offsetY } = nativeEvent;
@@ -81,7 +182,7 @@ const DrawingBoard = () => {
     lastPointRef.current = null;
     console.log(pathHistory.current);
     if (socket && pathHistory.current.length > 0) {
-      socket.emit("DRAW_PATH", {
+      socket.emit("DRAW_STROKE", {
         roomid: roomid,
         strokeData: {
           path: pathHistory.current,
@@ -127,8 +228,7 @@ const DrawingBoard = () => {
     context.save();
     context.strokeStyle = data.color;
     context.lineWidth = data.strokeWidth;
-    context.globalCompositeOperation =
-      data.tool === "ERASE" ? "destination-out" : "source-over";
+    context.globalCompositeOperation = data.tool === "ERASE" ? "destination-out" : "source-over";
 
     context.beginPath();
     context.moveTo(data.from.x, data.from.y);
