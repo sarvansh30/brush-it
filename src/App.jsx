@@ -6,10 +6,7 @@ import { ToolProvider } from "./ToolProvider";
 import { SocketProvider } from "./SocketProvider";
 
 function App() {
-  // useEffect(()=>{
-
-  // },[currTool]);
-
+  
   return (
     <SocketProvider>
       <ToolProvider>
