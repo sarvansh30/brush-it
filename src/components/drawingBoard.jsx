@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useContext } from "react";
-import { ToolContext } from "../ToolContext";
-import { SocketContext } from "../SocketContext";
+import { ToolContext } from "../context/ToolContext";
+import { SocketContext } from "../context/SocketContext";
 import { useParams } from "react-router-dom";
 
 const DrawingBoard = () => {
