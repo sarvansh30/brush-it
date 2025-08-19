@@ -3,8 +3,10 @@ const Rooms = require("./models/Rooms.model");
 const initializeSocketIO = (server) => {
   const io = new Server(server, {
     cors: {
-      origin: "http://localhost:5173",
-      methods: ["GET", "POST"],
+        origin: "*", // Allow all origins
+        methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"], // Allow all common HTTP methods
+        allowedHeaders: ["*"],
+        credentials: false,
     }
   });
 

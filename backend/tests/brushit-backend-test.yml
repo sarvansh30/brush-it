@@ -1,0 +1,165 @@
+config:
+  target: "http://localhost:3000"
+  phases:
+    - duration: 300        # 5 minutes total
+      arrivalRate: 30      # 30 new users per second
+      rampTo: 100          # ramp up to 100 new users/sec (to reach 1000s)
+  protocols:
+    socketio: {}
+  variables:
+    rooms:
+      - "testRoom1"
+      - "testRoom2"
+      - "testRoom3"
+      - "testRoom4"
+      - "testRoom5"
+      - "testRoom6"
+      - "testRoom7"
+      - "testRoom8"
+      - "testRoom9"
+      - "testRoom10"
+      - "testRoom11"
+      - "testRoom12"
+      - "testRoom13"
+      - "testRoom14"
+      - "testRoom15"
+      - "testRoom16"
+      - "testRoom17"
+      - "testRoom18"
+      - "testRoom19"
+      - "testRoom20"
+      - "testRoom21"
+      - "testRoom22"
+      - "testRoom23"
+      - "testRoom24"
+      - "testRoom25"
+      - "testRoom26"
+      - "testRoom27"
+      - "testRoom28"
+      - "testRoom29"
+      - "testRoom30"
+      - "testRoom31"
+      - "testRoom32"
+      - "testRoom33"
+      - "testRoom34"
+      - "testRoom35"
+      - "testRoom36"
+      - "testRoom37"
+      - "testRoom38"
+      - "testRoom39"
+      - "testRoom40"
+      - "testRoom41"
+      - "testRoom42"
+      - "testRoom43"
+      - "testRoom44"
+      - "testRoom45"
+      - "testRoom46"
+      - "testRoom47"
+      - "testRoom48"
+      - "testRoom49"
+      - "testRoom50"
+      - "testRoom51"
+      - "testRoom52"
+      - "testRoom53"
+      - "testRoom54"
+      - "testRoom55"
+      - "testRoom56"
+      - "testRoom57"
+      - "testRoom58"
+      - "testRoom59"
+      - "testRoom60"
+      - "testRoom61"
+      - "testRoom62"
+      - "testRoom63"
+      - "testRoom64"
+      - "testRoom65"
+      - "testRoom66"
+      - "testRoom67"
+      - "testRoom68"
+      - "testRoom69"
+      - "testRoom70"
+      - "testRoom71"
+      - "testRoom72"
+      - "testRoom73"
+      - "testRoom74"
+      - "testRoom75"
+      - "testRoom76"
+      - "testRoom77"
+      - "testRoom78"
+      - "testRoom79"
+      - "testRoom80"
+      - "testRoom81"
+      - "testRoom82"
+      - "testRoom83"
+      - "testRoom84"
+      - "testRoom85"
+      - "testRoom86"
+      - "testRoom87"
+      - "testRoom88"
+      - "testRoom89"
+      - "testRoom90"
+      - "testRoom91"
+      - "testRoom92"
+      - "testRoom93"
+      - "testRoom94"
+      - "testRoom95"
+      - "testRoom96"
+      - "testRoom97"
+      - "testRoom98"
+      - "testRoom99"
+      - "testRoom100"
+
+scenarios:
+  - engine: "socketio"
+    flow:
+      # Join a random room
+      - emit:
+          channel: "JOIN_ROOM"
+          data: "{{ rooms | random }}"
+      - think: 2
+
+      # Loop of actions
+      - loop:
+          - emit:
+              channel: "DRAW_STROKE"
+              data:
+                roomid: "{{ rooms | random }}"
+                strokeData:
+                  color: "green"
+                  strokeWidth: 2
+                  tool: "DRAW"
+                  path:
+                    - { x: 10, y: 10 }
+                    - { x: 30, y: 30 }
+          - think: 2
+          - emit:
+              channel: "DRAW_ACTION"
+              data:
+                roomid: "{{ rooms | random }}"
+                strokeData:
+                  color: "blue"
+                  strokeWidth: 3
+                  tool: "DRAW"
+                  path:
+                    - { x: 0, y: 0 }
+                    - { x: 20, y: 20 }
+          - think: 2
+          - emit:
+              channel: "UNDO_ACTION"
+              data: "{{ rooms | random }}"
+          - think: 2
+          - emit:
+              channel: "REDO_ACTION"
+              data: "{{ rooms | random }}"
+          - think: 2
+          - emit:
+              channel: "CANVAS_RESET"
+              data: "{{ rooms | random }}"
+          - think: 2
+          - emit:
+              channel: "SUBMIT_SNAPSHOT"
+              data:
+                roomid: "{{ rooms | random }}"
+                newSnapshotURL: "http://fake-snapshot.com/{{ $randomNumber(1,9999) }}.png"
+          - think: 5
+        count: 20   # each client repeats this cycle 20 times before disconnect
