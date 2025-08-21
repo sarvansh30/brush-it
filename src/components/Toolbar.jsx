@@ -1,5 +1,5 @@
-import { SocketContext } from "../SocketContext";
-import { ToolContext } from "../ToolContext";
+import { SocketContext } from "../context/SocketContext";
+import { ToolContext } from "../context/ToolContext";
 import React, { useContext } from 'react';
 import { useParams } from "react-router-dom";
 

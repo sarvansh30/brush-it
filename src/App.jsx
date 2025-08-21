@@ -2,8 +2,8 @@
 import "./App.css";
 import DrawingBoard from "./components/drawingBoard";
 import ToolBar from "./components/Toolbar";
-import { ToolProvider } from "./ToolProvider";
-import { SocketProvider } from "./SocketProvider";
+import { ToolProvider } from "./context/ToolProvider";
+import { SocketProvider } from "./context/SocketProvider";
 
 function App() {
   
