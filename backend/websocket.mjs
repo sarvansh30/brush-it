@@ -1,7 +1,7 @@
 import { Server } from "socket.io";
-import Redis from 'ioredis';
+import Redis from "ioredis";
 import Rooms from "./models/Rooms.model.js";
-import queue from './workers/queue.js';
+import queue from "./workers/queue.js";
 const addJob = queue.addJob;
 
 export const initializeSocketIO = (server) => {
@@ -11,24 +11,26 @@ export const initializeSocketIO = (server) => {
       methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
       allowedHeaders: ["*"],
       credentials: false,
-    }
+    },
   });
 
   // Redis clients for pub/sub
   const redisClient = new Redis({
-    host: process.env.REDIS_HOST || 'localhost',
+    host: process.env.REDIS_HOST || "localhost",
     port: process.env.REDIS_PORT || 6379,
     password: process.env.REDIS_PASSWORD || undefined,
   });
 
   const redisSubscriber = new Redis({
-    host: process.env.REDIS_HOST || 'localhost',
+    host: process.env.REDIS_HOST || "localhost",
     port: process.env.REDIS_PORT || 6379,
     password: process.env.REDIS_PASSWORD || undefined,
   });
 
   // Server instance ID
-  const SERVER_ID = `server-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const SERVER_ID = `server-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 9)}`;
 
   // Configuration constants
   const UNDO_LIMIT = 25;
@@ -37,25 +39,25 @@ export const initializeSocketIO = (server) => {
   console.log(`🎨 Canvas WebSocket server ${SERVER_ID} initialized`);
 
   // Subscribe to Redis channels for cross-server communication
-  redisSubscriber.subscribe('canvas-events', 'room-events');
+  redisSubscriber.subscribe("canvas-events", "room-events");
 
-  redisSubscriber.on('message', async (channel, message) => {
+  redisSubscriber.on("message", async (channel, message) => {
     try {
       const data = JSON.parse(message);
-      
+
       // Don't process events from this server
-      if (data.serverId === SERVER_ID) return;
+      // if (data.serverId === SERVER_ID) return;
 
       switch (channel) {
-        case 'canvas-events':
+        case "canvas-events":
           await handleCanvasEvent(data);
           break;
-        case 'room-events':
+        case "room-events":
           await handleRoomEvent(data);
           break;
       }
     } catch (error) {
-      console.error('❌ Redis message parsing error:', error);
+      console.error("❌ Redis message parsing error:", error);
     }
   });
 
@@ -63,26 +65,46 @@ export const initializeSocketIO = (server) => {
     const { type, roomid, socketId } = data;
 
     switch (type) {
-      case 'DRAW_ACTION':
+      case "DRAW_ACTION":
         // Forward drawing action to all clients in room except sender
-        io.to(roomid).except(socketId).emit('DRAW_ACTION', data.strokeData);
+        io.to(roomid).except(socketId).emit("DRAW_ACTION", data.strokeData);
         break;
-        
-      case 'CANVAS_RESET':
-        io.to(roomid).emit('CANVAS_RESET');
+
+      case "CANVAS_RESET":
+        io.to(roomid).emit("CANVAS_RESET");
         break;
-        
-      case 'CANVAS_HISTORY':
-        io.to(roomid).emit('CANVAS_HISTORY', data.payload);
+
+      case "CANVAS_HISTORY":
+        io.to(roomid).emit("CANVAS_HISTORY", data.payload);
         break;
-        
-      case 'CREATE_SNAPSHOT':
-        // Find a random client in the room on this server
-        const roomClients = io.sockets.adapter.rooms.get(roomid);
-        if (roomClients && roomClients.size > 0) {
-          const clientArray = Array.from(roomClients);
-          const randomClientId = clientArray[Math.floor(Math.random() * clientArray.length)];
-          io.to(randomClientId).emit('CREATE_SNAPSHOT', data.payload);
+
+      case "CREATE_SNAPSHOT":
+        // --- LOCK 2: Ensure only one server delegates the snapshot task ---
+        const delegateLockKey = `lock:snapshot-delegate:${roomid}`;
+        // Attempt to acquire the lock. Expire after 30s to prevent deadlocks.
+        const lockAcquired = await redisClient.set(
+          delegateLockKey,
+          SERVER_ID,
+          "EX",
+          30,
+          "NX"
+        );
+
+        if (lockAcquired) {
+          console.log(
+            `🔐 Delegate lock acquired by server ${SERVER_ID} for room ${roomid}`
+          );
+          const roomClients = io.sockets.adapter.rooms.get(roomid);
+          if (roomClients && roomClients.size > 0) {
+            const clientArray = Array.from(roomClients);
+            const randomClientId =
+              clientArray[Math.floor(Math.random() * clientArray.length)];
+              console.log(`🎯 Delegating snapshot creation to client ${randomClientId} in room ${roomid}`);
+            io.to(randomClientId).emit("CREATE_SNAPSHOT", data.payload);
+          } else {
+            // If no clients are on this server, release the lock immediately
+            await redisClient.del(delegateLockKey);
+          }
         }
         break;
     }
@@ -90,20 +112,20 @@ export const initializeSocketIO = (server) => {
 
   const handleRoomEvent = async (data) => {
     const { type, roomid } = data;
-    
+
     switch (type) {
-      case 'USER_JOINED':
-        io.to(roomid).emit('USER_JOINED', data.payload);
+      case "USER_JOINED":
+        io.to(roomid).emit("USER_JOINED", data.payload);
         break;
-      case 'USER_LEFT':
-        io.to(roomid).emit('USER_LEFT', data.payload);
+      case "USER_LEFT":
+        io.to(roomid).emit("USER_LEFT", data.payload);
         break;
     }
   };
 
   io.on("connection", async (socket) => {
     console.log(`🔌 New client connected: ${socket.id} on server ${SERVER_ID}`);
-    
+
     // Track connection count
     await redisClient.incr(`server:${SERVER_ID}:connections`);
 
@@ -114,7 +136,7 @@ export const initializeSocketIO = (server) => {
         await redisClient.hset(`socket:${socket.id}`, {
           roomid: roomid,
           serverId: SERVER_ID,
-          joinedAt: Date.now()
+          joinedAt: Date.now(),
         });
 
         // Join Socket.IO room
@@ -122,15 +144,15 @@ export const initializeSocketIO = (server) => {
 
         // Get or create room session data from Redis
         let sessionData = await redisClient.hgetall(`session:${roomid}`);
-        
+
         if (!sessionData.roomid) {
           // Initialize session in Redis
           sessionData = {
             roomid: roomid,
             undoStack: JSON.stringify([]),
             redoStack: JSON.stringify([]),
-            currBaseImageURL: '',
-            createdAt: Date.now()
+            currBaseImageURL: "",
+            createdAt: Date.now(),
           };
           await redisClient.hset(`session:${roomid}`, sessionData);
         }
@@ -145,53 +167,65 @@ export const initializeSocketIO = (server) => {
 
         // Update current base image from MongoDB if available
         if (room.canvasSnapshot && !sessionData.currBaseImageURL) {
-          await redisClient.hset(`session:${roomid}`, 'currBaseImageURL', room.canvasSnapshot);
+          await redisClient.hset(
+            `session:${roomid}`,
+            "currBaseImageURL",
+            room.canvasSnapshot
+          );
           sessionData.currBaseImageURL = room.canvasSnapshot;
         }
 
         // Send canvas history to joining client
         socket.emit("CANVAS_HISTORY", {
           baseImageURL: sessionData.currBaseImageURL || null,
-          history: JSON.parse(sessionData.undoStack || '[]'),
+          history: JSON.parse(sessionData.undoStack || "[]"),
         });
 
         // Update member count
         const memberCount = await redisClient.scard(`room:${roomid}:members`);
-        await redisClient.hset(`room:${roomid}`, 'memberCount', memberCount);
+        await redisClient.hset(`room:${roomid}`, "memberCount", memberCount);
 
         // Publish room join event to other servers
-        await redisClient.publish('room-events', JSON.stringify({
-          type: 'USER_JOINED',
-          roomid: roomid,
-          socketId: socket.id,
-          serverId: SERVER_ID,
-          memberCount: memberCount,
-          payload: { socketId: socket.id, memberCount }
-        }));
+        await redisClient.publish(
+          "room-events",
+          JSON.stringify({
+            type: "USER_JOINED",
+            roomid: roomid,
+            socketId: socket.id,
+            serverId: SERVER_ID,
+            memberCount: memberCount,
+            payload: { socketId: socket.id, memberCount },
+          })
+        );
 
-        console.log(`👥 Client ${socket.id} joined room ${roomid} (${memberCount} members)`);
+        console.log(
+          `👥 Client ${socket.id} joined room ${roomid} (${memberCount} members)`
+        );
       } catch (error) {
-        console.error('❌ Error joining room:', error);
-        socket.emit('ERROR', 'Failed to join room');
+        console.error("❌ Error joining room:", error);
+        socket.emit("ERROR", "Failed to join room");
       }
     });
 
     socket.on("DRAW_ACTION", async (data) => {
       try {
         // Publish to Redis for other servers
-        await redisClient.publish('canvas-events', JSON.stringify({
-          type: 'DRAW_ACTION',
-          roomid: data.roomid,
-          socketId: socket.id,
-          serverId: SERVER_ID,
-          strokeData: data.strokeData,
-          timestamp: Date.now()
-        }));
+        await redisClient.publish(
+          "canvas-events",
+          JSON.stringify({
+            type: "DRAW_ACTION",
+            roomid: data.roomid,
+            socketId: socket.id,
+            serverId: SERVER_ID,
+            strokeData: data.strokeData,
+            timestamp: Date.now(),
+          })
+        );
 
         // Broadcast to local clients
         socket.to(data.roomid).emit("DRAW_ACTION", data.strokeData);
       } catch (error) {
-        console.error('❌ Error handling draw action:', error);
+        console.error("❌ Error handling draw action:", error);
       }
     });
 
@@ -201,29 +235,32 @@ export const initializeSocketIO = (server) => {
         await redisClient.hset(`session:${roomid}`, {
           undoStack: JSON.stringify([]),
           redoStack: JSON.stringify([]),
-          currBaseImageURL: ''
+          currBaseImageURL: "",
         });
 
         // Add job to worker queue for MongoDB update
-        await addJob('canvas-reset', {
+        await addJob("canvas-reset", {
           roomid: roomid,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         });
 
         // Publish reset event to other servers
-        await redisClient.publish('canvas-events', JSON.stringify({
-          type: 'CANVAS_RESET',
-          roomid: roomid,
-          serverId: SERVER_ID,
-          timestamp: Date.now()
-        }));
+        await redisClient.publish(
+          "canvas-events",
+          JSON.stringify({
+            type: "CANVAS_RESET",
+            roomid: roomid,
+            serverId: SERVER_ID,
+            timestamp: Date.now(),
+          })
+        );
 
         // Broadcast to local clients
         io.to(roomid).emit("CANVAS_RESET");
-        
+
         console.log(`🧹 Canvas reset for room ${roomid}`);
       } catch (error) {
-        console.error('❌ Error resetting canvas:', error);
+        console.error("❌ Error resetting canvas:", error);
         io.to(roomid).emit("ERROR", "Failed to reset canvas");
       }
     });
@@ -231,60 +268,69 @@ export const initializeSocketIO = (server) => {
     socket.on("DRAW_STROKE", async (data) => {
       try {
         const { roomid, strokeData } = data;
-        
-        // Get current session from Redis
         const sessionKey = `session:${roomid}`;
+
+        socket.to(roomid).emit("DRAW_STROKE", strokeData);
+
         const undoStackStr = await redisClient.hget(sessionKey, 'undoStack');
         const undoStack = JSON.parse(undoStackStr || '[]');
-        
-        // Add new stroke
         undoStack.push(strokeData);
-        
-        // Clear redo stack
+
         await redisClient.hset(sessionKey, {
           undoStack: JSON.stringify(undoStack),
           redoStack: JSON.stringify([])
         });
 
-        // Check if we need to create a snapshot
         if (undoStack.length >= BATCH_TRIGGER_SIZE) {
-          const strokesToSave = undoStack.splice(0, BATCH_TRIGGER_SIZE - UNDO_LIMIT);
-          const currBaseImageURL = await redisClient.hget(sessionKey, 'currBaseImageURL');
+          // --- LOCK 1: Ensure only one server can trigger a snapshot ---
+          const triggerLockKey = `lock:snapshot-trigger:${roomid}`;
+          // Attempt to acquire the lock. Expire after 30s to prevent deadlocks.
+          const lockAcquired = await redisClient.set(triggerLockKey, SERVER_ID, 'EX', 30, 'NX');
           
-          // Update Redis with reduced undo stack
-          await redisClient.hset(sessionKey, 'undoStack', JSON.stringify(undoStack));
-
-          // Publish snapshot request to a random server
-          await redisClient.publish('canvas-events', JSON.stringify({
-            type: 'CREATE_SNAPSHOT',
-            roomid: roomid,
-            serverId: SERVER_ID,
-            payload: {
-              baseImageURL: currBaseImageURL || null,
-              strokesToSave: strokesToSave,
-            }
-          }));
-
-          console.log(`📸 Snapshot request sent for room ${roomid}`);
+          if (lockAcquired) {
+            console.log(`🔐 Trigger lock acquired by server ${SERVER_ID} for room ${roomid}`);
+            
+            const strokesToSave = undoStack.splice(0, BATCH_TRIGGER_SIZE - UNDO_LIMIT);
+            await redisClient.hset(sessionKey, 'undoStack', JSON.stringify(undoStack));
+            
+            const currBaseImageURL = await redisClient.hget(sessionKey, 'currBaseImageURL');
+            
+            // Publish the event for all servers to hear
+            await redisClient.publish('canvas-events', JSON.stringify({
+              type: 'CREATE_SNAPSHOT',
+              roomid: roomid,
+              serverId: SERVER_ID,
+              payload: {
+                baseImageURL: currBaseImageURL || null,
+                strokesToSave: strokesToSave,
+              }
+            }));
+            console.log(`📸 Snapshot request published for room ${roomid}`);
+          }
         }
       } catch (error) {
         console.error('❌ Error handling draw stroke:', error);
       }
     });
 
+
     socket.on("SUBMIT_SNAPSHOT", async (data) => {
       try {
         const { roomid, newSnapshotURL } = data;
 
-        // Update Redis session
         await redisClient.hset(`session:${roomid}`, 'currBaseImageURL', newSnapshotURL);
 
-        // Add job to worker queue for MongoDB update
         await addJob('update-snapshot', {
           roomid: roomid,
           snapshotURL: newSnapshotURL,
           timestamp: Date.now()
         });
+
+        // --- LOCK RELEASE: Clean up both locks after the process is complete ---
+        const triggerLockKey = `lock:snapshot-trigger:${roomid}`;
+        const delegateLockKey = `lock:snapshot-delegate:${roomid}`;
+        await redisClient.del(triggerLockKey, delegateLockKey);
+        console.log(`🔓 Locks released for room ${roomid}`);
 
         console.log(`💾 Snapshot submitted for room ${roomid}`);
       } catch (error) {
@@ -296,9 +342,14 @@ export const initializeSocketIO = (server) => {
     socket.on("UNDO_ACTION", async (roomid) => {
       try {
         const sessionKey = `session:${roomid}`;
-        const sessionData = await redisClient.hmget(sessionKey, 'undoStack', 'redoStack', 'currBaseImageURL');
-        const undoStack = JSON.parse(sessionData[0] || '[]');
-        const redoStack = JSON.parse(sessionData[1] || '[]');
+        const sessionData = await redisClient.hmget(
+          sessionKey,
+          "undoStack",
+          "redoStack",
+          "currBaseImageURL"
+        );
+        const undoStack = JSON.parse(sessionData[0] || "[]");
+        const redoStack = JSON.parse(sessionData[1] || "[]");
 
         if (undoStack.length > 0) {
           const lastAction = undoStack.pop();
@@ -307,36 +358,44 @@ export const initializeSocketIO = (server) => {
           // Update Redis
           await redisClient.hset(sessionKey, {
             undoStack: JSON.stringify(undoStack),
-            redoStack: JSON.stringify(redoStack)
+            redoStack: JSON.stringify(redoStack),
           });
 
           const payload = {
             baseImageURL: sessionData[2] || null,
-            history: undoStack
+            history: undoStack,
           };
 
           // Publish to other servers
-          await redisClient.publish('canvas-events', JSON.stringify({
-            type: 'CANVAS_HISTORY',
-            roomid: roomid,
-            serverId: SERVER_ID,
-            payload: payload
-          }));
+          await redisClient.publish(
+            "canvas-events",
+            JSON.stringify({
+              type: "CANVAS_HISTORY",
+              roomid: roomid,
+              serverId: SERVER_ID,
+              payload: payload,
+            })
+          );
 
           // Broadcast to local clients
           io.to(roomid).emit("CANVAS_HISTORY", payload);
         }
       } catch (error) {
-        console.error('❌ Error handling undo:', error);
+        console.error("❌ Error handling undo:", error);
       }
     });
 
     socket.on("REDO_ACTION", async (roomid) => {
       try {
         const sessionKey = `session:${roomid}`;
-        const sessionData = await redisClient.hmget(sessionKey, 'undoStack', 'redoStack', 'currBaseImageURL');
-        const undoStack = JSON.parse(sessionData[0] || '[]');
-        const redoStack = JSON.parse(sessionData[1] || '[]');
+        const sessionData = await redisClient.hmget(
+          sessionKey,
+          "undoStack",
+          "redoStack",
+          "currBaseImageURL"
+        );
+        const undoStack = JSON.parse(sessionData[0] || "[]");
+        const redoStack = JSON.parse(sessionData[1] || "[]");
 
         if (redoStack.length > 0) {
           const lastAction = redoStack.pop();
@@ -345,27 +404,30 @@ export const initializeSocketIO = (server) => {
           // Update Redis
           await redisClient.hset(sessionKey, {
             undoStack: JSON.stringify(undoStack),
-            redoStack: JSON.stringify(redoStack)
+            redoStack: JSON.stringify(redoStack),
           });
 
           const payload = {
             baseImageURL: sessionData[2] || null,
-            history: undoStack
+            history: undoStack,
           };
 
           // Publish to other servers
-          await redisClient.publish('canvas-events', JSON.stringify({
-            type: 'CANVAS_HISTORY',
-            roomid: roomid,
-            serverId: SERVER_ID,
-            payload: payload
-          }));
+          await redisClient.publish(
+            "canvas-events",
+            JSON.stringify({
+              type: "CANVAS_HISTORY",
+              roomid: roomid,
+              serverId: SERVER_ID,
+              payload: payload,
+            })
+          );
 
           // Broadcast to local clients
           io.to(roomid).emit("CANVAS_HISTORY", payload);
         }
       } catch (error) {
-        console.error('❌ Error handling redo:', error);
+        console.error("❌ Error handling redo:", error);
       }
     });
 
@@ -378,20 +440,23 @@ export const initializeSocketIO = (server) => {
         if (roomid) {
           // Remove from room members
           await redisClient.srem(`room:${roomid}:members`, socket.id);
-          
+
           // Update member count
           const memberCount = await redisClient.scard(`room:${roomid}:members`);
-          await redisClient.hset(`room:${roomid}`, 'memberCount', memberCount);
+          await redisClient.hset(`room:${roomid}`, "memberCount", memberCount);
 
           // Publish leave event
-          await redisClient.publish('room-events', JSON.stringify({
-            type: 'USER_LEFT',
-            roomid: roomid,
-            socketId: socket.id,
-            serverId: SERVER_ID,
-            memberCount: memberCount,
-            payload: { socketId: socket.id, memberCount }
-          }));
+          await redisClient.publish(
+            "room-events",
+            JSON.stringify({
+              type: "USER_LEFT",
+              roomid: roomid,
+              socketId: socket.id,
+              serverId: SERVER_ID,
+              memberCount: memberCount,
+              payload: { socketId: socket.id, memberCount },
+            })
+          );
         }
 
         // Clean up socket data
@@ -400,13 +465,13 @@ export const initializeSocketIO = (server) => {
 
         console.log(`🔌 Client disconnected: ${socket.id}`);
       } catch (error) {
-        console.error('❌ Error handling disconnect:', error);
+        console.error("❌ Error handling disconnect:", error);
       }
     });
   });
 
   // Clean up on server shutdown
-  process.on('SIGTERM', async () => {
+  process.on("SIGTERM", async () => {
     await redisClient.quit();
     await redisSubscriber.quit();
   });

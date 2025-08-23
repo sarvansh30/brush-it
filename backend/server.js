@@ -2,9 +2,9 @@ require('dotenv').config();
 const http = require('http');
 const mongoose = require('mongoose');
 const { app, SERVER_ID } = require('./app');
-// import { initializeSocketIO } from './websocket.mjs';
-const {initializeSocketIO} = require('./websocket.mjs');
-const { initializeWorkers } = require('./workers/index');
+const { initializeSocketIO } = require('./websocket.mjs');
+// 1. Import `stopProcessing` along with `initializeWorkers`
+const { initializeWorkers, stopProcessing } = require('./workers/index');
 
 const PORT = process.env.PORT || 3000;
 const MONGO_URL = process.env.MONGO_URL;
@@ -23,24 +23,23 @@ initializeSocketIO(server);
 // Initialize background workers
 initializeWorkers();
 
-// Graceful shutdown handling
-process.on('SIGTERM', () => {
-  console.log('🔄 Received SIGTERM, shutting down gracefully...');
-  server.close(() => {
-    console.log('✅ Server closed');
-    mongoose.connection.close();
+// --- 2. Centralized Graceful Shutdown Handling ---
+const gracefulShutdown = () => {
+  console.log('🔄 Received shutdown signal, shutting down gracefully...');
+  server.close(async () => {
+    console.log('✅ HTTP server closed');
+    await mongoose.connection.close();
+    console.log('✅ MongoDB connection closed');
+    // Call the worker stop function to cleanly shut it down
+    await stopProcessing(); 
     process.exit(0);
   });
-});
+};
 
-process.on('SIGINT', () => {
-  console.log('🔄 Received SIGINT, shutting down gracefully...');
-  server.close(() => {
-    console.log('✅ Server closed');
-    mongoose.connection.close();
-    process.exit(0);
-  });
-});
+// Listen for both shutdown signals and call the same function
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
+// ------------------------------------------------
 
 server.listen(PORT, () => {
   console.log(`🚀 Server ${SERVER_ID} listening on port ${PORT}`);
