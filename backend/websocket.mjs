@@ -15,17 +15,18 @@ export const initializeSocketIO = (server) => {
   });
 
   // Redis clients for pub/sub
-  const redisClient = new Redis({
-    host: process.env.REDIS_HOST ,
-    port: process.env.REDIS_PORT ,
-    password: process.env.REDIS_PASSWORD,
+ const redisClient = new Redis({
+    host: process.env.REDIS_HOST || "localhost",
+    port: process.env.REDIS_PORT || 6379,
+    password: process.env.REDIS_PASSWORD || undefined,
   });
 
   const redisSubscriber = new Redis({
-    host: process.env.REDIS_HOST ,
-    port: process.env.REDIS_PORT ,
-    password: process.env.REDIS_PASSWORD,
+    host: process.env.REDIS_HOST || "localhost",
+    port: process.env.REDIS_PORT || 6379,
+    password: process.env.REDIS_PASSWORD || undefined,
   });
+
 
   // Server instance ID
   const SERVER_ID = `server-${Date.now()}-${Math.random()
