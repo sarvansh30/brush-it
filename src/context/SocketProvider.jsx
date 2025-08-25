@@ -5,8 +5,10 @@ import { SocketContext } from './SocketContext';
 export const SocketProvider = ({children})=>{
     const [socket, setSocket] = useState(null);
 
+    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+
     useEffect(()=>{
-       const socket  = io('http://localhost:3000'); 
+       const socket  = io(BACKEND_URL); 
        setSocket(socket);
 
        return ()=>{
