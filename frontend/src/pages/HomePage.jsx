@@ -16,8 +16,9 @@ const Logo = () => (
 
 const Home = () => {
   const createRoomButton = async () => {
+    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
     try {
-      const resp = await fetch("http://localhost:3000/room/create-room", {
+      const resp = await fetch(`${BACKEND_URL}/room/create-room`, {
         method: "POST",
       });
       if (!resp.ok) {
