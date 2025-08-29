@@ -3,6 +3,8 @@ const { v4: uuidv4 } = require('uuid');
 const cors = require('cors');
 const Redis = require('ioredis');
 
+const rateLimit = require('express-rate-limit');
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -40,7 +42,15 @@ app.get('/status', async (req, res) => {
   }
 });
 
-app.post('/room/create-room', async (req, res) => {
+const createRoomLimiter = rateLimit({
+    windowMs:5*60*1000,
+    max:5,
+    message:"Too many room creation requests try again after 5 minutes",
+    standardHeaders:true,
+    legacyHeaders:false
+});
+
+app.post('/room/create-room',createRoomLimiter, async (req, res) => {
   const roomid = uuidv4();
   
   try {
