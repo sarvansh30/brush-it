@@ -1,0 +1,15 @@
+# Dependency directories
+node_modules
+
+# Environment files
+.env
+
+# Git folder
+.git
+
+# Docker files
+Dockerfile
+.dockerignore
+
+# Logs
+npm-debug.log*
