@@ -4,7 +4,8 @@ import { SocketContext } from "../context/SocketContext";
 import { useParams } from "react-router-dom";
 
 const DrawingBoard = () => {
-  const { tool, color, strokeWidth } = useContext(ToolContext);
+  const { toolOptions } = useContext(ToolContext);
+  const { tool, color, strokeWidth } = toolOptions;
   const socket = useContext(SocketContext);
 
   const { roomid } = useParams();

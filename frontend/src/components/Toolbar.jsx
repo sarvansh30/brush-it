@@ -4,7 +4,7 @@ import React, { useContext } from 'react';
 import { useParams } from "react-router-dom";
 
 const ToolBar = () =>{
-    const {tool,setTool,color,setColor,strokeWidth,setStrokeWidth} = useContext(ToolContext);
+    const { toolOptions, updateToolOptions, changeTool } = useContext(ToolContext);
     const socket = useContext(SocketContext);
     
     const { roomid } = useParams();
@@ -30,9 +30,9 @@ const ToolBar = () =>{
     return(
         <div className="fixed bottom-16 left-1/2 -translate-x-1/2  p-2 rounded-xl border-1 flex gap-7">
 
-        <button className="hover:bg-amber-200 hover:cursor-pointer" onClick={()=>setTool('DRAW')}>Draw</button>
+        <button className="hover:bg-amber-200 hover:cursor-pointer" onClick={()=>changeTool('PEN')}>Draw</button>
         
-        <button className="hover:bg-amber-200 hover:cursor-pointer" onClick={()=>setTool("ERASE")}>Erase</button>
+        <button className="hover:bg-amber-200 hover:cursor-pointer" onClick={()=>changeTool("ERASER")}>Erase</button>
         
         <p>Stroke: </p>
         <input 
@@ -41,18 +41,16 @@ const ToolBar = () =>{
         id="strokeWidth"
         min='1'
         max='50'
-        value={strokeWidth}
-        defaultValue={5}
-        onChange={(e)=>setStrokeWidth(parseInt(e.target.value,10))} />
+        value={toolOptions.strokeWidth}
+        onChange={(e)=>updateToolOptions('strokeWidth', parseInt(e.target.value,10))} />
 
         <p>Color:</p>
         <input  
         type="color"
          name="color"
           id="color"
-          defaultValue={"black"}
-          value={color}
-          onChange={(e)=>setColor(e.target.value)} />
+          value={toolOptions.color}
+          onChange={(e)=>updateToolOptions('color', e.target.value)} />
         
 
         <button className="hover:cursor-pointer" onClick={handleReset}>RESET</button>
