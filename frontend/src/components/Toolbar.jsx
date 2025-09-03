@@ -33,7 +33,6 @@ const ToolBar = () => {
     
     // Local state for UI
     const [showColorPicker, setShowColorPicker] = useState(false);
-    const [connectedUsers] = useState(3); // Mock data - replace with real socket data
 
     // Predefined colors for quick access
     const colorPalette = [
@@ -114,17 +113,6 @@ const ToolBar = () => {
             <div className="bg-white/95 backdrop-blur-sm border border-gray-200 shadow-lg rounded-lg p-3 animate-fade-in">
                 <div className="flex items-center gap-3">
                     
-                    {/* Connected Users Indicator */}
-                    <Tooltip content={`${connectedUsers} users connected`}>
-                        <div className="flex items-center gap-2 px-2 py-1 bg-gray-100 rounded-md">
-                            <Users className="h-4 w-4 text-gray-600" />
-                            <Badge variant="secondary">
-                                {connectedUsers}
-                            </Badge>
-                        </div>
-                    </Tooltip>
-
-                    <Separator orientation="vertical" className="h-8" />
 
                     {/* Drawing Tools */}
                     <div className="flex items-center gap-1">

@@ -6,24 +6,17 @@ import { useDrawing } from "../hooks/useDrawing";
 import { useSocketManager } from "../hooks/useSocketManager";
 import { canvasUtils } from "../utils/canvasUtils";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
+import { socketJoinRoom } from "../hooks/socketJoinRoom";
+
 const DrawingBoard = () => {
   const { toolOptions } = useContext(ToolContext);
   const { tool, color, strokeWidth } = toolOptions;
   const socket = useContext(SocketContext);
   const { roomid } = useParams();
-  
+  socketJoinRoom(socket, roomid);
   const canvasRef = useRef(null);
-
-   // Join room when component mounts
-  useEffect(() => {
-    if (!socket || !roomid) return;
-    
-    console.log("Attempting to join room:", roomid); // Debug log
-    socket.emit("JOIN_ROOM", roomid);
-  }, [socket, roomid]);
-  
-  // Custom hooks for drawing functionality
-  const { startDrawing, draw, stopDrawing } = useDrawing(socket, roomid, toolOptions);
+   
+    const { startDrawing, draw, stopDrawing } = useDrawing(socket, roomid, toolOptions);
   
   // Enable keyboard shortcuts
   useKeyboardShortcuts(roomid);
