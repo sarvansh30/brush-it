@@ -1,25 +1,31 @@
+import { useEffect } from 'react';
 
+export const useSocketManager = (socket, roomid, callbacks) => {
+    useEffect(() => {
+        if (!socket || !roomid) return;
 
-export const useSocketManager = (socket,roomid,callbacks) => {
-    
-    useEffect(()=>{
-        if(!socket || !roomid) return;
+        // Join room when component mounts
+        // socket.emit("JOIN_ROOM", roomid);
 
-        const {onCanvasState,onDrawAction,onSnapshotRequest,onDrawStroke} = callbacks;
+        const {
+            onCanvasHistory,
+            onDrawAction,
+            onCanvasReset,
+            onCreateSnapshot
+        } = callbacks;
 
-        socket.on('CANVAS_STATE',onCanvasState);
+        // Set up socket listeners
+        socket.on('CANVAS_HISTORY', onCanvasHistory);
+        socket.on('DRAW_ACTION', onDrawAction);
+        socket.on('CANVAS_RESET', onCanvasReset);
+        socket.on('CREATE_SNAPSHOT', onCreateSnapshot);
 
-        socket.on('DRAW_ACTION',onDrawAction);
-
-        socket.on('SNAPSHOT_REQUEST',onSnapshotRequest);
-
-        socket.on('DRAW_STROKE',onDrawStroke);
-
-        return ()=>{
-            socket.off('CANVAS_STATE');
+        // Cleanup listeners
+        return () => {
+            socket.off('CANVAS_HISTORY');
             socket.off('DRAW_ACTION');
-            socket.off('SNAPSHOT_REQUEST');
-            socket.off('DRAW_STROKE');
+            socket.off('CANVAS_RESET');
+            socket.off('CREATE_SNAPSHOT');
         };
-    },[ socket, roomid, callbacks ]);
-}
+    }, [socket, roomid, callbacks]);
+};

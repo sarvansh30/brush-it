@@ -1,63 +1,67 @@
-import { color } from 'framer-motion';
-import { useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 
-export const  useDrawing = (socket, roomid, toolOptions) =>{
-
-    const [isDrawing,setIsDrawing] = useState(false);
+export const useDrawing = (socket, roomid, toolOptions) => {
+    const [isDrawing, setIsDrawing] = useState(false);
     const currentPathRef = useRef([]);
     const lastPointRef = useRef(null);
 
-    const startDrawing = (context,{nativeEvent}) =>{
-        const {offsetX, offsetY} = nativeEvent;
+    const startDrawing = (context, { nativeEvent }) => {
+        const { offsetX, offsetY } = nativeEvent;
 
-        if(toolOptions.tool === 'ERASER') context.globalCompositeOperation = 'destination-out';
-        else context.globalCompositeOperation = 'source-over';
+        // Set drawing mode based on tool
+        if (toolOptions.tool === 'ERASER') {
+            context.globalCompositeOperation = 'destination-out';
+        } else {
+            context.globalCompositeOperation = 'source-over';
+        }
 
         setIsDrawing(true);
-
-        currentPathRef.current = [{x: offsetX, y: offsetY}];
+        currentPathRef.current = [{ x: offsetX, y: offsetY }];
 
         context.beginPath();
         context.moveTo(offsetX, offsetY);
-        lastPointRef.current = {x: offsetX, y: offsetY};
+        lastPointRef.current = { x: offsetX, y: offsetY };
     };
 
-    const draw = (context,{nativeEvent}) =>{
-        if(!isDrawing) return;
+    const draw = (context, { nativeEvent }) => {
+        if (!isDrawing) return;
         
-        const {offsetX, offsetY} = nativeEvent;
+        const { offsetX, offsetY } = nativeEvent;
 
-        context.lineTo(offsetX,offsetY);
+        context.lineTo(offsetX, offsetY);
         context.stroke();
 
-        if(socket && lastPointRef.current){
-            
-            socket.emit('DRAW_ACTION',{
-                roomid:roomid,
-                strokeData:{
-                    from:lastPointRef.current,
-                    to:{x: offsetX, y: offsetY},
+        // Emit real-time drawing action
+        if (socket && lastPointRef.current) {
+            socket.emit('DRAW_ACTION', {
+                roomid: roomid,
+                strokeData: {
+                    from: lastPointRef.current,
+                    to: { x: offsetX, y: offsetY },
                     color: toolOptions.color,
                     strokeWidth: toolOptions.strokeWidth,
                     tool: toolOptions.tool,
                 }
             });
-
         }
-        currentPathRef.current.push({x: offsetX, y: offsetY});
-        lastPointRef.current = {x: offsetX, y: offsetY};
+
+        currentPathRef.current.push({ x: offsetX, y: offsetY });
+        lastPointRef.current = { x: offsetX, y: offsetY };
     };
 
     const stopDrawing = () => {
         setIsDrawing(false);
         
+        // Emit complete stroke data
         if (socket && currentPathRef.current.length > 1) {
             socket.emit("DRAW_STROKE", {
-                roomId: roomId,
+                roomid: roomid, // Fixed: was roomId
                 strokeData: {
                     path: currentPathRef.current,
-                    options: toolOptions,
-                },
+                    tool: toolOptions.tool,
+                    color: toolOptions.color,
+                    strokeWidth: toolOptions.strokeWidth,
+                }
             });
         }
         
@@ -66,8 +70,9 @@ export const  useDrawing = (socket, roomid, toolOptions) =>{
     };
 
     return {
+        isDrawing,
         startDrawing,
         draw,
         stopDrawing
     };
-};  
+};
