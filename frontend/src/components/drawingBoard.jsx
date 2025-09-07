@@ -6,14 +6,14 @@ import { useDrawing } from "../hooks/useDrawing";
 import { useSocketManager } from "../hooks/useSocketManager";
 import { canvasUtils } from "../utils/canvasUtils";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
-import { socketJoinRoom } from "../hooks/socketJoinRoom";
+
 
 const DrawingBoard = () => {
   const { toolOptions } = useContext(ToolContext);
   const { tool, color, strokeWidth } = toolOptions;
-  const socket = useContext(SocketContext);
+  const {socket,isSocketReady} = useContext(SocketContext);
   const { roomid } = useParams();
-  socketJoinRoom(socket, roomid);
+  
   const canvasRef = useRef(null);
    
     const { startDrawing, draw, stopDrawing } = useDrawing(socket, roomid, toolOptions);
@@ -63,11 +63,10 @@ const DrawingBoard = () => {
         }
       );
     }
-  }, [socket, roomid]);
+  }, [roomid]);
 
  
 
-  // Set up socket listeners
   useSocketManager(socket, roomid, socketCallbacks);
 
   // Initialize canvas on mount
