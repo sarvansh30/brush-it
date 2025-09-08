@@ -7,21 +7,33 @@ import { useSocketManager } from "../hooks/useSocketManager";
 import { canvasUtils } from "../utils/canvasUtils";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 
-
 const DrawingBoard = () => {
+   console.log("1. DrawingBoard component rendered.");
+
   const { toolOptions } = useContext(ToolContext);
-  const { tool, color, strokeWidth } = toolOptions;
-  const {socket,isSocketReady} = useContext(SocketContext);
+  const { color, strokeWidth } = toolOptions;
+  
+  const socketContext = useContext(SocketContext);
   const { roomid } = useParams();
+  console.log("2. Socket Context is:", socketContext);
+  // Early return while context is initializing
+  if (!socketContext) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <div className="text-lg">Connecting to server...</div>
+      </div>
+    );
+  }
+  
+  const { socket, isConnected } = socketContext;
   
   const canvasRef = useRef(null);
    
-    const { startDrawing, draw, stopDrawing } = useDrawing(socket, roomid, toolOptions);
+  // 🔽 Pass 'isConnected' to the useDrawing hook
+  const { startDrawing, draw, stopDrawing } = useDrawing(socket, isConnected, roomid, toolOptions);
   
-  // Enable keyboard shortcuts
   useKeyboardShortcuts(roomid);
 
-  // Socket event handlers
   const socketCallbacks = useCallback({
     onCanvasHistory: (data) => {
       const { baseImageURL, history } = data;
@@ -30,7 +42,6 @@ const DrawingBoard = () => {
       
       canvasUtils.loadCanvasHistory(canvas, baseImageURL, history);
     },
-
     onDrawAction: (data) => {
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -38,14 +49,12 @@ const DrawingBoard = () => {
       const context = canvas.getContext("2d");
       canvasUtils.drawSegment(context, data);
     },
-
     onCanvasReset: () => {
       const canvas = canvasRef.current;
       if (!canvas) return;
       
       canvasUtils.clearCanvas(canvas);
     },
-
     onCreateSnapshot: (data) => {
       const { baseImageURL, strokesToSave } = data;
       const canvas = canvasRef.current;
@@ -56,38 +65,37 @@ const DrawingBoard = () => {
         baseImageURL, 
         strokesToSave, 
         (newSnapshotURL) => {
-          socket.emit('SUBMIT_SNAPSHOT', { 
-            roomid: roomid, 
-            newSnapshotURL: newSnapshotURL 
-          });
+          // Check connection before emitting back
+          if (socket && isConnected) {
+            socket.emit('SUBMIT_SNAPSHOT', { 
+              roomid: roomid, 
+              newSnapshotURL: newSnapshotURL 
+            });
+          }
         }
       );
     }
-  }, [roomid]);
+  }, [roomid, socket, isConnected]); 
 
- 
+  useSocketManager({ socket, isConnected }, roomid, socketCallbacks);
 
-  useSocketManager(socket, roomid, socketCallbacks);
-
-  // Initialize canvas on mount
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
     canvasUtils.initializeCanvas(canvas, color, strokeWidth);
-  }, []);
+  }, []); // Initialize only once on mount
 
-  // Update canvas properties when tool options change
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
     const context = canvas.getContext("2d");
     canvasUtils.updateCanvasProperties(context, color, strokeWidth);
   }, [color, strokeWidth]);
 
-  // Canvas event handlers
   const handleMouseDown = (e) => {
+   
+    if (!isConnected) return;
+    
     const canvas = canvasRef.current;
     if (!canvas) return;
     
@@ -113,6 +121,11 @@ const DrawingBoard = () => {
 
   return (
     <div className="w-full h-full">
+      {!isConnected && (
+        <div className="absolute top-4 right-4 bg-yellow-100 border border-yellow-400 text-yellow-700 px-3 py-2 rounded z-10">
+          Reconnecting...
+        </div>
+      )}
       <canvas
         ref={canvasRef}
         onMouseDown={handleMouseDown}

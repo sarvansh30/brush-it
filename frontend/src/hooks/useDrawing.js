@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 
-export const useDrawing = (socket, roomid, toolOptions) => {
+// The hook now accepts 'isConnected' to be connection-aware
+export const useDrawing = (socket, isConnected, roomid, toolOptions) => {
     const [isDrawing, setIsDrawing] = useState(false);
     const currentPathRef = useRef([]);
     const lastPointRef = useRef(null);
@@ -31,8 +32,9 @@ export const useDrawing = (socket, roomid, toolOptions) => {
         context.lineTo(offsetX, offsetY);
         context.stroke();
 
-        // Emit real-time drawing action
-        if (socket && lastPointRef.current) {
+        // Emit real-time drawing action ONLY if connected
+        // 🔽 UPDATED THIS CONDITION 🔽
+        if (socket && isConnected && lastPointRef.current) {
             socket.emit('DRAW_ACTION', {
                 roomid: roomid,
                 strokeData: {
@@ -52,10 +54,11 @@ export const useDrawing = (socket, roomid, toolOptions) => {
     const stopDrawing = () => {
         setIsDrawing(false);
         
-        // Emit complete stroke data
-        if (socket && currentPathRef.current.length > 1) {
+        // Emit complete stroke data ONLY if connected
+        // 🔽 UPDATED THIS CONDITION 🔽
+        if (socket && isConnected && currentPathRef.current.length > 1) {
             socket.emit("DRAW_STROKE", {
-                roomid: roomid, // Fixed: was roomId
+                roomid: roomid,
                 strokeData: {
                     path: currentPathRef.current,
                     tool: toolOptions.tool,

@@ -1,44 +1,49 @@
-import { useEffect } from 'react';
+// useSocketManager.js
+import { useEffect, useRef } from 'react';
 
-export const useSocketManager = (socket, roomid, callbacks) => { // Removed isSocketReady
+export const useSocketManager = (socketCtx, roomid, callbacks) => {
+  const { socket, isConnected } = socketCtx || {};
+  const callbacksRef = useRef(callbacks);
+  callbacksRef.current = callbacks;
 
-    // Effect for joining the room
-    useEffect(() => {
-        // The socket is guaranteed to exist here.
-        if (!socket || !roomid) return;
+  useEffect(() => {
+    if (!socket || !roomid) return;
 
-        console.log(`🚀 Emitting JOIN_ROOM for room: ${roomid}`);
-        socket.emit("JOIN_ROOM", roomid);
+    if (isConnected) {
+      console.log(`%c[CLIENT] EMITTING JOIN_ROOM EVENT. Room: ${roomid}`, 'color: #00A36C; font-weight: bold;');
+      socket.emit('JOIN_ROOM', roomid, (ack) => {
+        console.log(`%c[CLIENT] Received acknowledgment from server:`, 'color: #00A36C; font-weight: bold;', ack);
+      });
+    } else console.log(`[CLIENT] Socket not connected. Current status: ${isConnected}`);
 
-        // No cleanup needed for the join event itself
-        return () => {
-            console.log(`🔌 Leaving room: ${roomid}`);
-            // If you had a LEAVE_ROOM event, you'd emit it here.
-        };
-    }, [socket, roomid]); // Dependency on isSocketReady removed
+    return () => {
+      if (socket) {
+        console.log(`[SocketManager] 🚪 Cleaning up. Leaving room: ${roomid}`);
+      }
+    };
+  }, [socket, roomid, isConnected]);
 
+  useEffect(() => {
+    if (!socket) return;
 
-    // Effect for registering event listeners
-    useEffect(() => {
-        if (!socket || !callbacks) return;
+    const handleCanvasHistory = (data) => callbacksRef.current?.onCanvasHistory?.(data);
+    const handleDrawAction = (data) => callbacksRef.current?.onDrawAction?.(data);
+    const handleCanvasReset = () => callbacksRef.current?.onCanvasReset?.();
+    const handleCreateSnapshot = () => callbacksRef.current?.onCreateSnapshot?.();
 
-        const {
-            onCanvasHistory,
-            onDrawAction,
-            onCanvasReset,
-            onCreateSnapshot
-        } = callbacks;
+    socket.on('CANVAS_HISTORY', handleCanvasHistory);
+    socket.on('DRAW_ACTION', handleDrawAction);
+    socket.on('CANVAS_RESET', handleCanvasReset);
+    socket.on('CREATE_SNAPSHOT', handleCreateSnapshot);
 
-        socket.on('CANVAS_HISTORY', onCanvasHistory);
-        socket.on('DRAW_ACTION', onDrawAction);
-        socket.on('CANVAS_RESET', onCanvasReset);
-        socket.on('CREATE_SNAPSHOT', onCreateSnapshot);
+    console.log('[SocketManager] Event listeners attached for socket:', socket.id);
 
-        return () => {
-            socket.off('CANVAS_HISTORY', onCanvasHistory);
-            socket.off('DRAW_ACTION', onDrawAction);
-            socket.off('CANVAS_RESET', onCanvasReset);
-            socket.off('CREATE_SNAPSHOT', onCreateSnapshot);
-        };
-    }, [socket, callbacks]);
+    return () => {
+      socket.off('CANVAS_HISTORY', handleCanvasHistory);
+      socket.off('DRAW_ACTION', handleDrawAction);
+      socket.off('CANVAS_RESET', handleCanvasReset);
+      socket.off('CREATE_SNAPSHOT', handleCreateSnapshot);
+      console.log('[SocketManager] Event listeners removed for socket:', socket.id);
+    };
+  }, [socket]);
 };

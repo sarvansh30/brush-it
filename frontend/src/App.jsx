@@ -11,7 +11,7 @@ function App() {
       <ToolProvider>
         <div className="">
           <DrawingBoard />
-          <ToolBar />
+          <ToolBar /> 
         </div>
       </ToolProvider>
     </SocketProvider>

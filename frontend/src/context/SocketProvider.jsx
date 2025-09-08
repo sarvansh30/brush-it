@@ -1,40 +1,47 @@
-import { useEffect, useState, createContext } from 'react';
+// SocketProvider.jsx
+import { useEffect, useState, createContext, useMemo } from 'react';
 import { io } from 'socket.io-client';
-
-// 1. Define the socket instance OUTSIDE the component. It's now a singleton.
+import { SocketContext } from './SocketContext';
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
-const socket = io(BACKEND_URL, { autoConnect: false }); // Prevent it from connecting immediately
 
-export const SocketContext = createContext(); // Assuming SocketContext is defined here or imported
 
 export const SocketProvider = ({ children }) => {
-    // We no longer need useState for the socket object itself.
-    const [isSocketReady, setIsSocketReady] = useState(false);
 
-    useEffect(() => {
-        // 2. We now just manage the connection lifecycle, not creation.
-        socket.connect();
+  const socket = useMemo(() => io(BACKEND_URL, { autoConnect: false }), []);
+  const [isConnected, setIsConnected] = useState(socket.connected);
 
-        socket.on('connect', () => {
-            console.log('Socket connected:', socket.id);
-            setIsSocketReady(true);
-        });
 
-        socket.on('disconnect', () => {
-            console.log('Socket disconnected.');
-            setIsSocketReady(false);
-        });
+  useEffect(() => {
+  
+    const onConnect = () => {
+      console.log('Socket connected! ✅');
+      setIsConnected(true);
+    };
 
-        // The cleanup function should only disconnect.
-        return () => {
-            socket.disconnect();
-        };
-    }, []); // Empty dependency array is correct here.
 
-    // 3. Provide the single, stable socket instance in the context value.
-    return (
-        <SocketContext.Provider value={{ socket, isSocketReady }}>
-            {isSocketReady ? children : <div>Connecting...</div>}
-        </SocketContext.Provider>
-    );
+    const onDisconnect = () => {
+      console.log('Socket disconnected! ❌');
+      setIsConnected(false);
+    };
+
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+
+    socket.connect();
+
+
+    return () => {
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+      socket.disconnect();
+    };
+  }, [socket]);
+
+  const contextValue =  { socket, isConnected };
+
+  return (
+    <SocketContext.Provider value={contextValue}>
+      {children}
+    </SocketContext.Provider>
+  );
 };
