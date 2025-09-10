@@ -4,7 +4,7 @@ import { SocketContext } from '../context/SocketContext';
 
 export const useKeyboardShortcuts = (roomid) => {
     const { changeTool, updateToolOptions, toolOptions } = useContext(ToolContext);
-    const socket = useContext(SocketContext);
+    const { socket, isConnected } = useContext(SocketContext);
 
     useEffect(() => {
         const handleKeyDown = (event) => {
