@@ -60,11 +60,11 @@ const ToolBar = () => {
         }
     };
 
-    const handleSaveCanvas = () => {
-        if (socket) {
-            socket.emit('SAVE_CANVAS', roomid);
-        }
-    };
+    // const handleSaveCanvas = () => {
+    //     if (socket) {
+    //         socket.emit('SAVE_CANVAS', roomid);
+    //     }
+    // };
 
     // Stroke width handlers
     const decreaseStroke = () => {
@@ -241,7 +241,7 @@ const ToolBar = () => {
                             </Button>
                         </Tooltip>
 
-                        <Tooltip content="Save canvas">
+                        {/* <Tooltip content="Save canvas">
                             <Button
                                 variant="default"
                                 size="sm"
@@ -250,7 +250,7 @@ const ToolBar = () => {
                             >
                                 <Save className="h-4 w-4" />
                             </Button>
-                        </Tooltip>
+                        </Tooltip> */}
 
                         <Tooltip content="Clear canvas">
                             <Button
