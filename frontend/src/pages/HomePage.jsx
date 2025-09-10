@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 
 // Clean logo with white outline
 const Logo = () => (
@@ -15,8 +15,15 @@ const Logo = () => (
 );
 
 const Home = () => {
+  const whatsNextRef = useRef(null);
+
+  const scrollToWhatsNext = () => {
+    whatsNextRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
   const createRoomButton = async () => {
-    const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+    const BACKEND_URL =
+      import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
     try {
       const resp = await fetch(`${BACKEND_URL}/room/create-room`, {
         method: "POST",
@@ -25,11 +32,12 @@ const Home = () => {
         throw new Error("Network response was not ok");
       }
       const { roomid } = await resp.json();
-      // Navigate to room (you'll need to implement navigation)
       window.location.href = `/room/${roomid}`;
     } catch (err) {
       console.error("Error creating room:", err);
-      alert("Could not create a new room. Please try again.");
+      alert(
+        "Backend deployed on Render may take a moment to wake up on the first request. Please wait a few seconds and try again."
+      );
     }
   };
 
@@ -43,11 +51,17 @@ const Home = () => {
             <h1 className="text-3xl font-bold text-white">Brush It</h1>
           </div>
           <div className="flex items-center gap-4">
-            <button className="text-neutral-300 hover:text-white transition-colors duration-200 px-4 py-2 rounded-lg hover:bg-neutral-800">
-              Checkout
+            <button
+              onClick={scrollToWhatsNext}
+              className="bg-neutral-800 text-white px-4 py-2 rounded-lg shadow-[0_0_8px_rgba(255,255,255,0.3)] hover:shadow-[0_0_12px_rgba(255,255,255,0.5)] transition-shadow duration-200"
+            >
+              What's Next?
             </button>
-            <button className="bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-2 rounded-lg transition-colors duration-200 border border-neutral-600">
-              Join Public Room
+            <button
+              disabled
+              className="bg-neutral-800 text-white px-4 py-2 rounded-lg border border-neutral-600 opacity-50 cursor-not-allowed"
+            >
+              Join Public Room (Coming soon)
             </button>
           </div>
         </div>
@@ -59,7 +73,7 @@ const Home = () => {
             {/* Left Content */}
             <div className="space-y-8">
               <div className="space-y-6">
-                <h2 className="text-6xl lg:text-6xl font-semibold    text-white leading-tight tracking-tight">
+                <h2 className="text-6xl lg:text-6xl font-semibold text-white leading-tight tracking-tight">
                   Collaborative
                   <br />
                   Drawing
@@ -67,8 +81,8 @@ const Home = () => {
                   Made Simple
                 </h2>
                 <p className="text-xl text-zinc-300 leading-relaxed max-w-lg">
-                  Create, share, and draw together in real-time. Bring your
-                  ideas to life on an infinite canvas.
+                  Create, share, and draw together in real-time. Bring your ideas
+                  to life on an infinite canvas.
                 </p>
               </div>
 
@@ -79,9 +93,8 @@ const Home = () => {
                 <span className="relative z-20">Create Your Room</span>
                 {/* Animated Border Glow */}
                 <span className="absolute inset-0 rounded-2xl p-[6px] bg-gradient-to-r from-pink-500 via-yellow-500 to-blue-500 animate-borderLoop"></span>
-
                 {/* Inner background */}
-                <span className="absolute inset-[6px] bg-neutral-800 rounded-2xl"></span>``
+                <span className="absolute inset-[6px] bg-neutral-800 rounded-2xl"></span>
               </button>
 
               {/* Feature Pills */}
@@ -107,7 +120,6 @@ const Home = () => {
             {/* Right - Clean Browser Window with floating white glow */}
             <div className="flex justify-center lg:justify-end">
               <div className="relative max-w-2xl w-full">
-                {/* Add an outer container for a white glow */}
                 <div
                   className="relative"
                   style={{
@@ -121,7 +133,6 @@ const Home = () => {
                         "0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05)",
                     }}
                   >
-                    {/* Browser Header */}
                     <div className="bg-gray-50 px-4 py-3 flex items-center space-x-3 border-b border-gray-200">
                       <div className="flex space-x-2">
                         <div className="w-3 h-3 bg-red-400 rounded-full"></div>
@@ -130,9 +141,7 @@ const Home = () => {
                       </div>
                     </div>
 
-                    {/* Canvas Area */}
                     <div className="relative h-96 bg-gray-50">
-                      {/* Background Image */}
                       <div className="absolute inset-0 flex items-center justify-center p-8">
                         <img
                           src="/bg-hero.svg"
@@ -141,7 +150,6 @@ const Home = () => {
                         />
                       </div>
 
-                      {/* Clean Collaboration Indicator */}
                       <div className="absolute top-4 right-4 flex items-center space-x-2 bg-white rounded-lg px-3 py-2 border border-gray-200 shadow-sm">
                         <div className="flex -space-x-1">
                           <div className="w-4 h-4 bg-black rounded-full border-2 border-white"></div>
@@ -153,7 +161,6 @@ const Home = () => {
                         </span>
                       </div>
 
-                      {/* Minimal Drawing Tools */}
                       <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-sm px-4 py-3 border border-gray-200">
                         <div className="flex items-center space-x-4">
                           <div className="flex items-center space-x-2">
@@ -179,8 +186,6 @@ const Home = () => {
                           </div>
                         </div>
                       </div>
-
-                      {/* Simple Cursor Indicators */}
                       <div className="absolute top-20 left-20 w-3 h-3 bg-black rounded-full"></div>
                       <div className="absolute top-32 right-24 w-3 h-3 bg-gray-600 rounded-full"></div>
                       <div className="absolute bottom-20 left-32 w-3 h-3 bg-gray-400 rounded-full"></div>
@@ -193,6 +198,7 @@ const Home = () => {
         </div>
       </main>
 
+      {/* How It Works Section */}
       <section className="bg-neutral-900 py-20 border-t border-neutral-700">
         <div className="max-w-7xl mx-auto px-6 text-center">
           <h3 className="text-3xl font-bold text-white mb-16">How It Works</h3>
@@ -213,7 +219,9 @@ const Home = () => {
                   />
                 </svg>
               </div>
-              <h4 className="text-xl font-bold text-white">Create Instantly</h4>
+              <h4 className="text-xl font-bold text-white">
+                Create Instantly
+              </h4>
               <p className="text-neutral-300 leading-relaxed">
                 Start a new, private canvas with a single click. No sign-up
                 required.
@@ -260,7 +268,51 @@ const Home = () => {
               </div>
               <h4 className="text-xl font-bold text-white">Draw Together</h4>
               <p className="text-neutral-300 leading-relaxed">
-                Watch everyone's ideas appear on the shared canvas in real-time.
+                Watch everyone's ideas appear on the shared canvas in
+                real-time.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* What's Next Section */}
+      <section
+        ref={whatsNextRef}
+        className="bg-neutral-900 py-20 border-t border-neutral-700"
+      >
+        <div className="max-w-7xl mx-auto px-6 text-center">
+          <h3 className="text-3xl font-bold text-white mb-16">What's Next?</h3>
+          <div className="grid md:grid-cols-2 gap-12">
+            <div className="flex flex-col items-center space-y-4 p-6">
+              <h4 className="text-xl font-bold text-white">Custom URLs</h4>
+              <p className="text-neutral-300 leading-relaxed">
+                Allow users to save and share unique custom URLs for their
+                drawings.
+              </p>
+            </div>
+            <div className="flex flex-col items-center space-y-4 p-6">
+              <h4 className="text-xl font-bold text-white">Save Drawings</h4>
+              <p className="text-neutral-300 leading-relaxed">
+                Enable saving drawings for later editing and sharing.
+              </p>
+            </div>
+            <div className="flex flex-col items-center space-y-4 p-6">
+              <h4 className="text-xl font-bold text-white">
+                Flexible Canvas Size
+              </h4>
+              <p className="text-neutral-300 leading-relaxed">
+                Provide more freedom to adjust the canvas size based on user
+                requirements.
+              </p>
+            </div>
+            <div className="flex flex-col items-center space-y-4 p-6">
+              <h4 className="text-xl font-bold text-white">
+                Responsive Drawing Board
+              </h4>
+              <p className="text-neutral-300 leading-relaxed">
+                Improve the drawing board design for various screen sizes for a
+                better user experience.
               </p>
             </div>
           </div>
@@ -271,7 +323,6 @@ const Home = () => {
       <footer className="bg-neutral-900 text-center py-12 border-t border-neutral-700">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex flex-col items-center space-y-6">
-            {/* Contact Links */}
             <div className="flex items-center space-x-8">
               <a
                 href="https://github.com/sarvansh30"
@@ -326,7 +377,6 @@ const Home = () => {
               </a>
             </div>
 
-            {/* Copyright */}
             <p className="text-neutral-400 text-lg">
               © 2025 Brush It. Made by{" "}
               <a
