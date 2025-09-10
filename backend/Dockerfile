@@ -8,7 +8,7 @@ RUN npm install
 COPY . .
 
 #-----------------------
-FROM node:24-alipine
+FROM node:24-alpine
 
 WORKDIR /app
 
