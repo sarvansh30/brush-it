@@ -28,7 +28,7 @@ import {
 
 const ToolBar = () => {
     const { toolOptions, updateToolOptions, changeTool } = useContext(ToolContext);
-    const socket = useContext(SocketContext);
+    const { socket, isConnected } = useContext(SocketContext);
     const { roomid } = useParams();
     
     // Local state for UI
