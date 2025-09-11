@@ -288,26 +288,30 @@ export const initializeSocketIO = (server) => {
           // Attempt to acquire the lock. Expire after 30s to prevent deadlocks.
           const lockAcquired = await redisClient.set(triggerLockKey, SERVER_ID, 'EX', 30, 'NX');
           
-          if (lockAcquired) {
-            console.log(`🔐 Trigger lock acquired by server ${SERVER_ID} for room ${roomid}`);
-            
-            const strokesToSave = undoStack.splice(0, BATCH_TRIGGER_SIZE - UNDO_LIMIT);
-            await redisClient.hset(sessionKey, 'undoStack', JSON.stringify(undoStack));
-            
-            const currBaseImageURL = await redisClient.hget(sessionKey, 'currBaseImageURL');
-            
-            // Publish the event for all servers to hear
-            await redisClient.publish('canvas-events', JSON.stringify({
-              type: 'CREATE_SNAPSHOT',
-              roomid: roomid,
-              serverId: SERVER_ID,
-              payload: {
-                baseImageURL: currBaseImageURL || null,
-                strokesToSave: strokesToSave,
-              }
-            }));
-            console.log(`📸 Snapshot request published for room ${roomid}`);
-          }
+          // ✅ AFTER
+if (lockAcquired) {
+    console.log(`🔐 Trigger lock acquired by server ${SERVER_ID} for room ${roomid}`);
+    
+    // Use .slice() to copy, don't modify the stack yet
+    const strokesToSave = undoStack.slice(0, BATCH_TRIGGER_SIZE - UNDO_LIMIT);
+    
+    // REMOVED the line that saved the trimmed stack back to Redis.
+    
+    const currBaseImageURL = await redisClient.hget(sessionKey, 'currBaseImageURL');
+    
+    // Add strokesToTrim to the payload
+    await redisClient.publish('canvas-events', JSON.stringify({
+      type: 'CREATE_SNAPSHOT',
+      roomid: roomid,
+      serverId: SERVER_ID,
+      payload: {
+        baseImageURL: currBaseImageURL || null,
+        strokesToSave: strokesToSave,
+        strokesToTrim: strokesToSave.length 
+      }
+    }));
+    console.log(`📸 Snapshot request published for room ${roomid}`);
+}
         }
       } catch (error) {
         console.error('❌ Error handling draw stroke:', error);
@@ -315,30 +319,46 @@ export const initializeSocketIO = (server) => {
     });
 
 
-    socket.on("SUBMIT_SNAPSHOT", async (data) => {
-      try {
-        const { roomid, newSnapshotURL } = data;
+    // ✅ AFTER
+socket.on("SUBMIT_SNAPSHOT", async (data) => {
+  try {
+    const { roomid, newSnapshotURL, strokesToTrim } = data; // Get strokesToTrim
+    const sessionKey = `session:${roomid}`;
 
-        await redisClient.hset(`session:${roomid}`, 'currBaseImageURL', newSnapshotURL);
+    // Get the current undo stack
+    const undoStackStr = await redisClient.hget(sessionKey, 'undoStack');
+    const undoStack = JSON.parse(undoStackStr || '[]');
+    
+    // Trim the stack now
+    if (strokesToTrim > 0) {
+        undoStack.splice(0, strokesToTrim);
+    }
 
-        await addJob('update-snapshot', {
-          roomid: roomid,
-          snapshotURL: newSnapshotURL,
-          timestamp: Date.now()
-        });
-
-        // --- LOCK RELEASE: Clean up both locks after the process is complete ---
-        const triggerLockKey = `lock:snapshot-trigger:${roomid}`;
-        const delegateLockKey = `lock:snapshot-delegate:${roomid}`;
-        await redisClient.del(triggerLockKey, delegateLockKey);
-        console.log(`🔓 Locks released for room ${roomid}`);
-
-        console.log(`💾 Snapshot submitted for room ${roomid}`);
-      } catch (error) {
-        console.error('❌ Error submitting snapshot:', error);
-        io.to(data.roomid).emit("ERROR", "Failed to update canvas snapshot");
-      }
+    // Atomically update the base image AND the trimmed stack
+    await redisClient.hset(sessionKey, {
+        'currBaseImageURL': newSnapshotURL,
+        'undoStack': JSON.stringify(undoStack)
     });
+
+    await addJob('update-snapshot', {
+      roomid: roomid,
+      snapshotURL: newSnapshotURL,
+      timestamp: Date.now()
+    });
+
+    // Release locks
+    const triggerLockKey = `lock:snapshot-trigger:${roomid}`;
+    const delegateLockKey = `lock:snapshot-delegate:${roomid}`;
+    await redisClient.del(triggerLockKey, delegateLockKey);
+    console.log(`🔓 Locks released for room ${roomid}`);
+
+    console.log(`💾 Snapshot submitted and undoStack trimmed for room ${roomid}`);
+  } catch (error) {
+    console.error('❌ Error submitting snapshot:', error);
+    io.to(data.roomid).emit("ERROR", "Failed to update canvas snapshot");
+  }
+});
+
 
     socket.on("UNDO_ACTION", async (roomid) => {
       try {

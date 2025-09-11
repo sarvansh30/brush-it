@@ -55,26 +55,29 @@ const DrawingBoard = () => {
       
       canvasUtils.clearCanvas(canvas);
     },
-    onCreateSnapshot: (data) => {
-      const { baseImageURL, strokesToSave } = data;
-      const canvas = canvasRef.current;
-      if (!canvas) return;
+    
+    // ✅ AFTER
+onCreateSnapshot: (data) => {
+  const { baseImageURL, strokesToSave, strokesToTrim } = data; // Destructure strokesToTrim
+  const canvas = canvasRef.current;
+  if (!canvas) return;
 
-      canvasUtils.createSnapshot(
-        canvas, 
-        baseImageURL, 
-        strokesToSave, 
-        (newSnapshotURL) => {
-          // Check connection before emitting back
-          if (socket && isConnected) {
-            socket.emit('SUBMIT_SNAPSHOT', { 
-              roomid: roomid, 
-              newSnapshotURL: newSnapshotURL 
-            });
-          }
-        }
-      );
+  canvasUtils.createSnapshot(
+    canvas, 
+    baseImageURL, 
+    strokesToSave, 
+    (newSnapshotURL) => {
+      if (socket && isConnected) {
+        socket.emit('SUBMIT_SNAPSHOT', { 
+          roomid: roomid, 
+          newSnapshotURL: newSnapshotURL,
+          strokesToTrim: strokesToTrim // Send it back to the server
+        });
+      }
     }
+  );
+}
+
   }, [roomid, socket, isConnected]); 
 
   useSocketManager({ socket, isConnected }, roomid, socketCallbacks);
