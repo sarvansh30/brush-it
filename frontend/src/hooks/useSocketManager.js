@@ -29,7 +29,7 @@ export const useSocketManager = (socketCtx, roomid, callbacks) => {
     const handleCanvasHistory = (data) => callbacksRef.current?.onCanvasHistory?.(data);
     const handleDrawAction = (data) => callbacksRef.current?.onDrawAction?.(data);
     const handleCanvasReset = () => callbacksRef.current?.onCanvasReset?.();
-    const handleCreateSnapshot = () => callbacksRef.current?.onCreateSnapshot?.();
+    const handleCreateSnapshot = (data) => callbacksRef.current?.onCreateSnapshot?.(data);
 
     socket.on('CANVAS_HISTORY', handleCanvasHistory);
     socket.on('DRAW_ACTION', handleDrawAction);

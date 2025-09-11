@@ -73,7 +73,7 @@ export const canvasUtils = {
         const ctx = offscreenCanvas.getContext('2d');
 
         const generateSnapshot = () => {
-            // Draw the strokes
+            // Draw the strokes after the base image has been drawn
             strokesToSave.forEach(stroke => {
                 canvasUtils.drawStroke(ctx, stroke);
             });
@@ -86,8 +86,10 @@ export const canvasUtils = {
         if (baseImageURL) {
             const image = new Image();
             image.onload = () => {
+                // First draw the base image
                 ctx.drawImage(image, 0, 0);
-                generateSnapshot();
+                // Wait one more frame to ensure the base image is rendered
+                requestAnimationFrame(generateSnapshot);
             };
             image.onerror = generateSnapshot;
             image.src = baseImageURL;
@@ -115,7 +117,8 @@ export const canvasUtils = {
             const image = new Image();
             image.onload = () => {
                 context.drawImage(image, 0, 0);
-                drawHistory();
+                // Defer drawing strokes to next animation frame to ensure the image is rendered
+                requestAnimationFrame(drawHistory);
             };
             image.onerror = () => {
                 console.error("Failed to load base image from URL.");
