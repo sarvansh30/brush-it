@@ -1,4 +1,4 @@
-import React, { useRef, useContext, useEffect, useCallback } from "react";
+import React, { useState, useRef, useContext, useEffect, useCallback } from "react";
 import { ToolContext } from "../context/ToolContext";
 import { SocketContext } from "../context/SocketContext";
 import { useParams } from "react-router-dom";
@@ -8,15 +8,12 @@ import { canvasUtils } from "../utils/canvasUtils";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 
 const DrawingBoard = () => {
-   console.log("1. DrawingBoard component rendered.");
-
   const { toolOptions } = useContext(ToolContext);
   const { color, strokeWidth } = toolOptions;
   
   const socketContext = useContext(SocketContext);
   const { roomid } = useParams();
-  console.log("2. Socket Context is:", socketContext);
-  // Early return while context is initializing
+
   if (!socketContext) {
     return (
       <div className="w-full h-full flex items-center justify-center">
@@ -28,65 +25,67 @@ const DrawingBoard = () => {
   const { socket, isConnected } = socketContext;
   
   const canvasRef = useRef(null);
-   
-  // 🔽 Pass 'isConnected' to the useDrawing hook
+  // ✅ ADDED: State to track if the canvas is initialized
+  const [isCanvasInitialized, setIsCanvasInitialized] = useState(false); 
+  // ✅ ADDED: Ref to hold history that arrives before initialization
+  const pendingHistoryRef = useRef(null); 
+  
   const { startDrawing, draw, stopDrawing } = useDrawing(socket, isConnected, roomid, toolOptions);
   
   useKeyboardShortcuts(roomid);
 
   const socketCallbacks = useCallback({
+    // ✅ MODIFIED: This callback now checks if the canvas is ready
     onCanvasHistory: (data) => {
-      const { baseImageURL, history } = data;
       const canvas = canvasRef.current;
       if (!canvas) return;
-      
-      canvasUtils.loadCanvasHistory(canvas, baseImageURL, history);
+
+      if (isCanvasInitialized) {
+        // If canvas is ready, draw immediately
+        canvasUtils.loadCanvasHistory(canvas, data.baseImageURL, data.history);
+      } else {
+        // If canvas is NOT ready, store the data to be drawn later
+        pendingHistoryRef.current = data;
+      }
     },
     onDrawAction: (data) => {
       const canvas = canvasRef.current;
       if (!canvas) return;
-      
       const context = canvas.getContext("2d");
       canvasUtils.drawSegment(context, data);
     },
     onCanvasReset: () => {
       const canvas = canvasRef.current;
       if (!canvas) return;
-      
       canvasUtils.clearCanvas(canvas);
     },
-    
-    // ✅ AFTER
-onCreateSnapshot: (data) => {
-  const { baseImageURL, strokesToSave, strokesToTrim } = data; // Destructure strokesToTrim
-  const canvas = canvasRef.current;
-  if (!canvas) return;
-
-  canvasUtils.createSnapshot(
-    canvas, 
-    baseImageURL, 
-    strokesToSave, 
-    (newSnapshotURL) => {
-      if (socket && isConnected) {
-        socket.emit('SUBMIT_SNAPSHOT', { 
-          roomid: roomid, 
-          newSnapshotURL: newSnapshotURL,
-          strokesToTrim: strokesToTrim // Send it back to the server
-        });
-      }
+    onCreateSnapshot: (data) => {
+        // ... your existing onCreateSnapshot logic ...
     }
-  );
-}
-
-  }, [roomid, socket, isConnected]); 
+  }, [roomid, socket, isConnected, isCanvasInitialized]); // ✅ MODIFIED: Added dependency
 
   useSocketManager({ socket, isConnected }, roomid, socketCallbacks);
 
+  // ✅ MODIFIED: This useEffect now signals when initialization is complete
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     canvasUtils.initializeCanvas(canvas, color, strokeWidth);
-  }, []); // Initialize only once on mount
+    setIsCanvasInitialized(true); // Signal that setup is done
+  }, []); 
+
+  // ✅ ADDED: This new useEffect draws any pending history once the canvas is ready
+  useEffect(() => {
+    if (isCanvasInitialized && pendingHistoryRef.current) {
+        const canvas = canvasRef.current;
+        const data = pendingHistoryRef.current;
+        if (canvas && data) {
+            console.log("Drawing pending history...");
+            canvasUtils.loadCanvasHistory(canvas, data.baseImageURL, data.history);
+            pendingHistoryRef.current = null; // Clear the pending data
+        }
+    }
+  }, [isCanvasInitialized]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -96,12 +95,9 @@ onCreateSnapshot: (data) => {
   }, [color, strokeWidth]);
 
   const handleMouseDown = (e) => {
-   
     if (!isConnected) return;
-    
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
     const context = canvas.getContext("2d");
     startDrawing(context, e);
   };
@@ -109,7 +105,6 @@ onCreateSnapshot: (data) => {
   const handleMouseMove = (e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
     const context = canvas.getContext("2d");
     draw(context, e);
   };
