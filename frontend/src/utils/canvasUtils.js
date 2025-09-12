@@ -1,10 +1,10 @@
 // Utility functions for canvas operations
 export const canvasUtils = {
     // Initialize canvas size and context properties
-    initializeCanvas: (canvas, color, strokeWidth) => {
+    initializeCanvas: (canvas, color, strokeWidth,roomWidth,roomHeight) => {
         const context = canvas.getContext("2d");
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+        canvas.width = roomWidth;
+        canvas.height = roomHeight;
         
         context.strokeStyle = color;
         context.lineWidth = strokeWidth;
@@ -97,11 +97,15 @@ export const canvasUtils = {
     },
 
     // Load and draw canvas history
-    loadCanvasHistory: (canvas, baseImageURL, history) => {
+    loadCanvasHistory: (canvas, baseImageURL, history,roomWidth,roomHeight) => {
         const context = canvas.getContext("2d");
         
+        // Set canvas dimensions
+        canvas.width = roomWidth;
+        canvas.height = roomHeight;
+
         // Clear canvas first
-        context.clearRect(0, 0, canvas.width, canvas.height);
+        context.clearRect(0, 0, roomWidth, roomHeight);
 
         const drawHistory = () => {
             if (history && history.length > 0) {
