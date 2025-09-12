@@ -53,14 +53,23 @@ const createRoomLimiter = rateLimit({
 app.post('/room/create-room',createRoomLimiter, async (req, res) => {
   const roomid = uuidv4();
   
+  const canvasWidth = parseInt(req.body.canvasWidth, 10) || 1280;
+  const canvasHeight = parseInt(req.body.canvasHeight, 10) || 720;
+
+  if (canvasWidth < 100 || canvasWidth > 4096 || canvasHeight < 100 || canvasHeight > 4096) {
+    return res.status(400).json({ message: "Invalid canvas dimensions." });
+  }
+
   try {
     // Initialize room in Redis
-    await redisClient.hset(`room:${roomid}`, {
+     await redisClient.hset(`room:${roomid}`, {
       id: roomid,
       createdAt: Date.now(),
       createdBy: SERVER_ID,
       canvasSnapshot: '',
-      memberCount: 0
+      memberCount: 0,
+      canvasWidth: canvasWidth,
+      canvasHeight: canvasHeight
     });
     
     // Set room expiry (optional - 24 hours)
