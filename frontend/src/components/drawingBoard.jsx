@@ -1,7 +1,7 @@
-import React, { useState, useRef, useContext, useEffect, useCallback } from "react";
+import { useContext, useRef, useEffect, useCallback, useState } from "react";
+import { useParams, useLocation } from "react-router-dom";
 import { ToolContext } from "../context/ToolContext";
 import { SocketContext } from "../context/SocketContext";
-import { useParams } from "react-router-dom";
 import { useDrawing } from "../hooks/useDrawing";
 import { useSocketManager } from "../hooks/useSocketManager";
 import { canvasUtils } from "../utils/canvasUtils";
@@ -13,6 +13,14 @@ const DrawingBoard = () => {
   
   const socketContext = useContext(SocketContext);
   const { roomid } = useParams();
+  const location = useLocation(); // Get location object
+  const canvasRef = useRef(null);
+
+  // Initialize canvas size from navigation state if available (for room creator)
+  const [canvasSize, setCanvasSize] = useState(location.state ? {
+    width: location.state.width,
+    height: location.state.height
+  } : null);
 
   if (!socketContext) {
     return (
@@ -24,29 +32,18 @@ const DrawingBoard = () => {
   
   const { socket, isConnected } = socketContext;
   
-  const canvasRef = useRef(null);
-  // ✅ ADDED: State to track if the canvas is initialized
-  const [isCanvasInitialized, setIsCanvasInitialized] = useState(false); 
-  // ✅ ADDED: Ref to hold history that arrives before initialization
-  const pendingHistoryRef = useRef(null); 
-  
   const { startDrawing, draw, stopDrawing } = useDrawing(socket, isConnected, roomid, toolOptions);
   
   useKeyboardShortcuts(roomid);
 
   const socketCallbacks = useCallback({
-    // ✅ MODIFIED: This callback now checks if the canvas is ready
     onCanvasHistory: (data) => {
       const canvas = canvasRef.current;
       if (!canvas) return;
 
-      if (isCanvasInitialized) {
-        // If canvas is ready, draw immediately
-        canvasUtils.loadCanvasHistory(canvas, data.baseImageURL, data.history);
-      } else {
-        // If canvas is NOT ready, store the data to be drawn later
-        pendingHistoryRef.current = data;
-      }
+      // Set canvas size from server data and load history
+      setCanvasSize({ width: data.width, height: data.height });
+      canvasUtils.loadCanvasHistory(canvas, data.baseImageURL, data.history, data.width, data.height);
     },
     onDrawAction: (data) => {
       const canvas = canvasRef.current;
@@ -60,32 +57,32 @@ const DrawingBoard = () => {
       canvasUtils.clearCanvas(canvas);
     },
     onCreateSnapshot: (data) => {
-        // ... your existing onCreateSnapshot logic ...
-    }
-  }, [roomid, socket, isConnected, isCanvasInitialized]); // ✅ MODIFIED: Added dependency
+        // When a snapshot request is received, create it and submit back
+        const canvas = canvasRef.current;
+        if (!canvas) return;
 
+        canvasUtils.createSnapshot(canvas, data.baseImageURL, data.strokesToSave, (newSnapshotURL) => {
+            if (socket && isConnected) {
+                socket.emit("SUBMIT_SNAPSHOT", {
+                    roomid: roomid,
+                    newSnapshotURL: newSnapshotURL,
+                    strokesToTrim: data.strokesToTrim,
+                });
+            }
+        });
+    }
+  }, [roomid, socket, isConnected]);
+
+  // The hook now handles joining the room automatically on connection
   useSocketManager({ socket, isConnected }, roomid, socketCallbacks);
 
-  // ✅ MODIFIED: This useEffect now signals when initialization is complete
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    canvasUtils.initializeCanvas(canvas, color, strokeWidth);
-    setIsCanvasInitialized(true); // Signal that setup is done
-  }, []); 
-
-  // ✅ ADDED: This new useEffect draws any pending history once the canvas is ready
-  useEffect(() => {
-    if (isCanvasInitialized && pendingHistoryRef.current) {
-        const canvas = canvasRef.current;
-        const data = pendingHistoryRef.current;
-        if (canvas && data) {
-            console.log("Drawing pending history...");
-            canvasUtils.loadCanvasHistory(canvas, data.baseImageURL, data.history);
-            pendingHistoryRef.current = null; // Clear the pending data
-        }
-    }
-  }, [isCanvasInitialized]);
+    if (!canvas || !canvasSize) return; // Wait for canvas and size
+    
+    // Initialize properties once size is known
+    canvasUtils.initializeCanvas(canvas, color, strokeWidth,1200,800);
+  }, [canvasSize]); 
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -118,20 +115,26 @@ const DrawingBoard = () => {
   };
 
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full bg-neutral-800 flex items-center justify-center p-4">
       {!isConnected && (
         <div className="absolute top-4 right-4 bg-yellow-100 border border-yellow-400 text-yellow-700 px-3 py-2 rounded z-10">
           Reconnecting...
         </div>
       )}
-      <canvas
-        ref={canvasRef}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseLeave}
-        className="cursor-crosshair"
-      />
+      {canvasSize ? (
+        <canvas
+          ref={canvasRef}
+          width={canvasSize.width}
+          height={canvasSize.height}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeave}
+          className="cursor-crosshair bg-white rounded-md shadow-lg"
+        />
+      ) : (
+        <div className="text-white text-lg">Loading Canvas...</div>
+      )}
     </div>
   );
 };

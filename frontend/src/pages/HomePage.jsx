@@ -1,4 +1,7 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import Button from "../components/ui/Button";
+import CreateRoomDialog from "../components/CreateRoomDialog";
 
 // Clean logo with white outline
 const Logo = () => (
@@ -16,25 +19,35 @@ const Logo = () => (
 
 const Home = () => {
   const whatsNextRef = useRef(null);
+  const navigate = useNavigate();
+  const [isCreatingRoom, setIsCreatingRoom] = useState(false);
 
   const scrollToWhatsNext = () => {
     whatsNextRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const createRoomButton = async () => {
-    const BACKEND_URL =
-      import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+  const handleCreateRoom = async (canvasSize) => {
     try {
-      const resp = await fetch(`${BACKEND_URL}/room/create-room`, {
-        method: "POST",
-      });
-      if (!resp.ok) {
-        throw new Error("Network response was not ok");
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/room/create-room`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            canvasWidth: canvasSize.width,
+            canvasHeight: canvasSize.height,
+          }),
+        }
+      );
+      if (!response.ok) {
+        throw new Error("Failed to create room");
       }
-      const { roomid } = await resp.json();
-      window.location.href = `/room/${roomid}`;
-    } catch (err) {
-      console.error("Error creating room:", err);
+      const { roomid } = await response.json();
+      navigate(`/room/${roomid}`);
+    } catch (error) {
+      console.error("Error creating room:", error);
       alert(
         "Backend deployed on Render may take a moment to wake up on the first request. Please wait a few seconds and try again."
       );
@@ -87,7 +100,7 @@ const Home = () => {
               </div>
 
               <button
-                onClick={createRoomButton}
+                onClick={() => setIsCreatingRoom(true)}
                 className="relative z-10 px-10 py-5 rounded-2xl text-xl font-extrabold text-white tracking-wide overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-[0_0_15px_white] hover:cursor-pointer"
               >
                 <span className="relative z-20">Create Your Room</span>
@@ -380,7 +393,7 @@ const Home = () => {
             <p className="text-neutral-400 text-lg">
               © 2025 Brush It. Made by{" "}
               <a
-                href="https://github.com/sarvanshj"
+                href="https://github.com/sarvansh30"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-white hover:underline"
@@ -391,6 +404,10 @@ const Home = () => {
           </div>
         </div>
       </footer>
+
+      {isCreatingRoom && (
+        <CreateRoomDialog onCreateRoom={handleCreateRoom} />
+      )}
     </div>
   );
 };
