@@ -161,8 +161,18 @@ export const initializeSocketIO = (server) => {
         // Check/create room in MongoDB
         let room = await Rooms.findOne({ roomid: roomid });
         if (!room) {
-          room = new Rooms({ roomid: roomid, canvasSnapshot: null });
-          await room.save();
+      // Get dimensions from Redis
+      const roomData = await redisClient.hgetall(`room:${roomid}`);
+      const width = parseInt(roomData.canvasWidth, 10) || 1280;
+      const height = parseInt(roomData.canvasHeight, 10) || 720;
+
+      room = new Rooms({ 
+        roomid: roomid, 
+        canvasSnapshot: null,
+        canvasWidth: width,
+        canvasHeight: height
+      });
+      await room.save();
           console.log(`📁 Room ${roomid} created in MongoDB by ${socket.id}`);
         }
 
@@ -180,6 +190,8 @@ export const initializeSocketIO = (server) => {
         socket.emit("CANVAS_HISTORY", {
           baseImageURL: sessionData.currBaseImageURL || null,
           history: JSON.parse(sessionData.undoStack || "[]"),
+          width: room.canvasWidth,
+          height: room.canvasHeight,
         });
 
         // Update member count
