@@ -45,7 +45,12 @@ const Home = () => {
         throw new Error("Failed to create room");
       }
       const { roomid } = await response.json();
-      navigate(`/room/${roomid}`);
+      navigate(`/room/${roomid}`, {
+        state: {
+          width: canvasSize.width,
+          height: canvasSize.height,
+        },
+      });
     } catch (error) {
       console.error("Error creating room:", error);
       alert(
@@ -406,7 +411,10 @@ const Home = () => {
       </footer>
 
       {isCreatingRoom && (
-        <CreateRoomDialog onCreateRoom={handleCreateRoom} />
+        <CreateRoomDialog
+          onCreateRoom={handleCreateRoom}
+          onClose={() => setIsCreatingRoom(false)}
+        />
       )}
     </div>
   );
