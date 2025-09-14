@@ -1,5 +1,5 @@
 // useSocketManager.js
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 
 export const useSocketManager = (socketCtx, roomid, callbacks) => {
   const { socket, isConnected } = socketCtx || {};
@@ -13,12 +13,23 @@ export const useSocketManager = (socketCtx, roomid, callbacks) => {
       console.log(`%c[CLIENT] EMITTING JOIN_ROOM EVENT. Room: ${roomid}`, 'color: #00A36C; font-weight: bold;');
       socket.emit('JOIN_ROOM', roomid, (ack) => {
         console.log(`%c[CLIENT] Received acknowledgment from server:`, 'color: #00A36C; font-weight: bold;', ack);
+        // You can use a callback here if needed, e.g., callbacksRef.current.onRoomJoined(ack);
       });
-    } else console.log(`[CLIENT] Socket not connected. Current status: ${isConnected}`);
+    } else {
+      console.log(`[CLIENT] Socket not connected. Current status: ${isConnected}`);
+    }
+
+    const handleRoomJoined = (data) => callbacksRef.current?.onRoomJoined?.(data);
+    const handleRoomJoinError = (error) => callbacksRef.current?.onRoomJoinError?.(error);
+
+    socket.on('ROOM_JOINED', handleRoomJoined);
+    socket.on('ROOM_JOIN_ERROR', handleRoomJoinError);
 
     return () => {
       if (socket) {
-        console.log(`[SocketManager] 🚪 Cleaning up. Leaving room: ${roomid}`);
+        console.log(`[SocketManager] 🚪 Cleaning up room-join listeners. Leaving room: ${roomid}`);
+        socket.off('ROOM_JOINED', handleRoomJoined);
+        socket.off('ROOM_JOIN_ERROR', handleRoomJoinError);
       }
     };
   }, [socket, roomid, isConnected]);
@@ -37,7 +48,7 @@ export const useSocketManager = (socketCtx, roomid, callbacks) => {
     socket.on('CREATE_SNAPSHOT', handleCreateSnapshot);
 
     console.log('[SocketManager] Event listeners attached for socket:', socket.id);
-
+    
     return () => {
       socket.off('CANVAS_HISTORY', handleCanvasHistory);
       socket.off('DRAW_ACTION', handleDrawAction);
