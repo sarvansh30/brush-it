@@ -129,7 +129,11 @@ const DrawingBoard = () => {
       if (!canvas) return;
 
       canvasUtils.createSnapshot(canvas, data.baseImageURL, data.strokesToSave, (newSnapshotURL) => {
+        console.log("reached onCOmplete callback");
+        console.log(socket);
+        console.log(isConnected);
         if (socket && isConnected) {
+          console.log("reached onCOmplete callback, 7777");
           socket.emit("SUBMIT_SNAPSHOT", {
             roomid: roomid,
             newSnapshotURL: newSnapshotURL,
@@ -138,7 +142,7 @@ const DrawingBoard = () => {
         }
       });
     }
-  }, []);
+  }, [socket, isConnected, roomid]);
 
   // Track when we're waiting for canvas data
   useEffect(() => {
@@ -151,37 +155,37 @@ const DrawingBoard = () => {
   // Enhanced useSocketManager with room join tracking
   const originalUseSocketManager = useSocketManager({ socket, isConnected }, roomid, socketCallbacks);
   
-  // Track room join status and all socket events
-  useEffect(() => {
-    if (!socket || !isConnected) return;
+  // // Track room join status and all socket events
+  // useEffect(() => {
+  //   if (!socket || !isConnected) return;
     
-    const handleRoomJoined = (data) => {
-      console.log('🏠 [ROOM_JOINED] Room joined successfully:', data);
-      setDebugInfo(prev => ({ ...prev, roomJoined: true }));
-    };
+  //   const handleRoomJoined = (data) => {
+  //     console.log('🏠 [ROOM_JOINED] Room joined successfully:', data);
+  //     setDebugInfo(prev => ({ ...prev, roomJoined: true }));
+  //   };
     
-    const handleRoomJoinError = (error) => {
-      console.error('❌ [ROOM_JOIN_ERROR] Failed to join room:', error);
-    };
+  //   const handleRoomJoinError = (error) => {
+  //     console.error('❌ [ROOM_JOIN_ERROR] Failed to join room:', error);
+  //   };
 
-    // Add listener for CREATE_SNAPSHOT to see if it's being received
-    const handleCreateSnapshotEvent = (data) => {
-      console.log('🎯 [SOCKET EVENT] CREATE_SNAPSHOT received directly:', data);
-    };
+  //   // Add listener for CREATE_SNAPSHOT to see if it's being received
+  //   const handleCreateSnapshotEvent = (data) => {
+  //     console.log('🎯 [SOCKET EVENT] CREATE_SNAPSHOT received directly:', data);
+  //   };
 
-    socket.on('ROOM_JOINED', handleRoomJoined);
-    socket.on('ROOM_JOIN_ERROR', handleRoomJoinError);
-    socket.on('CREATE_SNAPSHOT', handleCreateSnapshotEvent);
+  //   socket.on('ROOM_JOINED', handleRoomJoined);
+  //   socket.on('ROOM_JOIN_ERROR', handleRoomJoinError);
+  //   socket.on('CREATE_SNAPSHOT', handleCreateSnapshotEvent);
 
-    // Log current socket ID for comparison with server logs
-    console.log('🔍 [SOCKET INFO] Current socket ID:', socket.id, 'Room:', roomid);
+  //   // Log current socket ID for comparison with server logs
+  //   console.log('🔍 [SOCKET INFO] Current socket ID:', socket.id, 'Room:', roomid);
 
-    return () => {
-      socket.off('ROOM_JOINED', handleRoomJoined);
-      socket.off('ROOM_JOIN_ERROR', handleRoomJoinError);
-      socket.off('CREATE_SNAPSHOT', handleCreateSnapshotEvent);
-    };
-  }, [socket, isConnected, roomid]);
+  //   return () => {
+  //     socket.off('ROOM_JOINED', handleRoomJoined);
+  //     socket.off('ROOM_JOIN_ERROR', handleRoomJoinError);
+  //     socket.off('CREATE_SNAPSHOT', handleCreateSnapshotEvent);
+  //   };
+  // }, [socket, isConnected, roomid]);
 
   // Canvas initialization with enhanced logging
   useEffect(() => {
