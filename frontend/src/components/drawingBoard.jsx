@@ -155,37 +155,6 @@ const DrawingBoard = () => {
   // Enhanced useSocketManager with room join tracking
   const originalUseSocketManager = useSocketManager({ socket, isConnected }, roomid, socketCallbacks);
   
-  // // Track room join status and all socket events
-  // useEffect(() => {
-  //   if (!socket || !isConnected) return;
-    
-  //   const handleRoomJoined = (data) => {
-  //     console.log('🏠 [ROOM_JOINED] Room joined successfully:', data);
-  //     setDebugInfo(prev => ({ ...prev, roomJoined: true }));
-  //   };
-    
-  //   const handleRoomJoinError = (error) => {
-  //     console.error('❌ [ROOM_JOIN_ERROR] Failed to join room:', error);
-  //   };
-
-  //   // Add listener for CREATE_SNAPSHOT to see if it's being received
-  //   const handleCreateSnapshotEvent = (data) => {
-  //     console.log('🎯 [SOCKET EVENT] CREATE_SNAPSHOT received directly:', data);
-  //   };
-
-  //   socket.on('ROOM_JOINED', handleRoomJoined);
-  //   socket.on('ROOM_JOIN_ERROR', handleRoomJoinError);
-  //   socket.on('CREATE_SNAPSHOT', handleCreateSnapshotEvent);
-
-  //   // Log current socket ID for comparison with server logs
-  //   console.log('🔍 [SOCKET INFO] Current socket ID:', socket.id, 'Room:', roomid);
-
-  //   return () => {
-  //     socket.off('ROOM_JOINED', handleRoomJoined);
-  //     socket.off('ROOM_JOIN_ERROR', handleRoomJoinError);
-  //     socket.off('CREATE_SNAPSHOT', handleCreateSnapshotEvent);
-  //   };
-  // }, [socket, isConnected, roomid]);
 
   // Canvas initialization with enhanced logging
   useEffect(() => {
@@ -265,14 +234,14 @@ const DrawingBoard = () => {
   };
 
   return (
-    <div className="w-full h-full bg-neutral-800 flex flex-col items-center justify-center p-4">
+    <div className="w-screen h-screen bg-neutral-800 flex flex-col items-center justify-center p-4">
       {!isConnected && (
         <div className="absolute top-4 right-4 bg-yellow-100 border border-yellow-400 text-yellow-700 px-3 py-2 rounded z-10">
           Reconnecting...
         </div>
       )}
       
-      {/* Debug Panel */}
+      {/* Debug Panel
       <div className="absolute top-4 left-4 bg-black bg-opacity-75 text-white p-3 rounded text-xs font-mono z-10">
         <div className="font-bold mb-2">Debug Status:</div>
         <div className={debugInfo.socketConnected ? 'text-green-400' : 'text-red-400'}>
@@ -291,7 +260,7 @@ const DrawingBoard = () => {
           Loaded: {debugInfo.canvasHistoryLoaded ? '✅' : '⏳'}
         </div>
         <div className="text-gray-400 mt-2">Room: {roomid}</div>
-      </div>
+      </div> */}  
 
       {canvasSize ? (
         <div className="flex items-center justify-center">
@@ -307,13 +276,13 @@ const DrawingBoard = () => {
           />
         </div>
       ) : (
-        <div className="text-white text-lg flex flex-col items-center gap-4">
+        <div className="text-white text-lg flex flex-col items-center justify-center gap-4">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
           <div>{getLoadingMessage()}</div>
           <div className="text-sm text-gray-400">Room ID: {roomid}</div>
-          <div className="text-xs text-red-400">
+          {/* <div className="text-xs text-red-400">
             Debug: canvasSize is {canvasSize ? 'SET' : 'NULL'} - {JSON.stringify(canvasSize)}
-          </div>
+          </div> */}
         </div>
       )}
     </div>

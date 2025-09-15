@@ -3,9 +3,7 @@ import { useState } from "react";
 import Button from "./ui/Button";
 
 const PRESET_SIZES = {
-  "Default (1280x720)": { width: 1280, height: 720 },
-  "Square (1080x1080)": { width: 1080, height: 1080 },
-  "Instagram Story (1080x1920)": { width: 1080, height: 1920 },
+  "Default (1280x720)": { width: 1280, height: 720 }
 };
 
 const CreateRoomDialog = ({ onCreateRoom, onClose }) => {
@@ -17,11 +15,11 @@ const CreateRoomDialog = ({ onCreateRoom, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={onClose}>
-      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-neutral-800 text-white rounded-lg shadow-xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-2xl font-bold mb-4">Create a New Board</h2>
         <div className="space-y-4">
-          <p className="text-sm text-gray-600">Choose a canvas size to start:</p>
-          <div className="grid grid-cols-1 gap-2">
+          <p className="text-sm text-white">Choose a canvas size to start:</p>
+          <div className="grid grid-cols-1 gap-2 text-black">
             {Object.entries(PRESET_SIZES).map(([name, dimensions]) => (
               <button
                 key={name}
@@ -37,7 +35,7 @@ const CreateRoomDialog = ({ onCreateRoom, onClose }) => {
             ))}
           </div>
           {/* Placeholder for future freehand/custom input */}
-          <p className="text-center text-xs text-gray-400 pt-2">Custom size input coming soon!</p>
+          <p className="text-center text-xs text-gray-200 pt-2">Custom size input coming soon!</p>
         </div>
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="outline" onClick={onClose}>
