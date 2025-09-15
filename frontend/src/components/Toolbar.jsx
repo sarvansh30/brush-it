@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useRef, useEffect } from 'react';
 import { SocketContext } from "../context/SocketContext";
 import { ToolContext } from "../context/ToolContext";
 import { useParams } from "react-router-dom";
@@ -23,7 +23,8 @@ import {
     Minus,
     Plus,
     Users,
-    Settings
+    Settings,
+    GripVertical // Added for drag handle
 } from "lucide-react";
 
 const ToolBar = () => {
@@ -33,6 +34,100 @@ const ToolBar = () => {
     
     // Local state for UI
     const [showColorPicker, setShowColorPicker] = useState(false);
+    
+    // Dragging state and refs
+    const [isDragging, setIsDragging] = useState(false);
+    const [position, setPosition] = useState({ x: 0, y: 0 });
+    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+    const [isInitialized, setIsInitialized] = useState(false);
+    const toolbarRef = useRef(null);
+    const dragHandleRef = useRef(null);
+
+    // Initialize position to center bottom
+    useEffect(() => {
+        if (!isInitialized && toolbarRef.current) {
+            const toolbar = toolbarRef.current;
+            const rect = toolbar.getBoundingClientRect();
+            const centerX = (window.innerWidth - rect.width) / 2;
+            const bottomY = window.innerHeight - rect.height - 12; // 32px from bottom
+            
+            setPosition({ x: centerX, y: bottomY });
+            setIsInitialized(true);
+        }
+    }, [isInitialized]);
+
+    // Handle drag start
+    const handleDragStart = (e) => {
+        if (!dragHandleRef.current?.contains(e.target)) return;
+        
+        setIsDragging(true);
+        const rect = toolbarRef.current.getBoundingClientRect();
+        setDragStart({
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top
+        });
+        
+        // Prevent text selection during drag
+        e.preventDefault();
+        document.body.style.userSelect = 'none';
+    };
+
+    // Handle drag move
+    const handleDragMove = (e) => {
+        if (!isDragging) return;
+        
+        const newX = e.clientX - dragStart.x;
+        const newY = e.clientY - dragStart.y;
+        
+        // Constrain to viewport
+        const toolbar = toolbarRef.current;
+        const rect = toolbar.getBoundingClientRect();
+        const maxX = window.innerWidth - rect.width;
+        const maxY = window.innerHeight - rect.height;
+        
+        setPosition({
+            x: Math.max(0, Math.min(maxX, newX)),
+            y: Math.max(0, Math.min(maxY, newY))
+        });
+    };
+
+    // Handle drag end
+    const handleDragEnd = () => {
+        setIsDragging(false);
+        document.body.style.userSelect = '';
+    };
+
+    // Add global event listeners for drag
+    useEffect(() => {
+        if (isDragging) {
+            document.addEventListener('mousemove', handleDragMove);
+            document.addEventListener('mouseup', handleDragEnd);
+            
+            return () => {
+                document.removeEventListener('mousemove', handleDragMove);
+                document.removeEventListener('mouseup', handleDragEnd);
+            };
+        }
+    }, [isDragging, dragStart]);
+
+    // Handle window resize to keep toolbar in bounds
+    useEffect(() => {
+        const handleResize = () => {
+            if (toolbarRef.current) {
+                const rect = toolbarRef.current.getBoundingClientRect();
+                const maxX = window.innerWidth - rect.width;
+                const maxY = window.innerHeight - rect.height;
+                
+                setPosition(prev => ({
+                    x: Math.max(0, Math.min(maxX, prev.x)),
+                    y: Math.max(0, Math.min(maxY, prev.y))
+                }));
+            }
+        };
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // Predefined colors for quick access
     const colorPalette = [
@@ -60,12 +155,6 @@ const ToolBar = () => {
         }
     };
 
-    // const handleSaveCanvas = () => {
-    //     if (socket) {
-    //         socket.emit('SAVE_CANVAS', roomid);
-    //     }
-    // };
-
     // Stroke width handlers
     const decreaseStroke = () => {
         const newWidth = Math.max(1, toolOptions.strokeWidth - 1);
@@ -79,7 +168,7 @@ const ToolBar = () => {
 
     // Color picker component
     const ColorPicker = () => (
-        <div className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 p-3 bg-white border border-gray-200 rounded-lg shadow-lg transition-all duration-200 ${showColorPicker ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'}`}>
+        <div className={`absolute bottom-full left-1/2 transform -translate-x-1/2 mb-3 p-3 bg-white border border-gray-200 rounded-lg shadow-lg transition-all duration-200 z-50 ${showColorPicker ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'}`}>
             <div className="w-64 space-y-3">
                 <div className="grid grid-cols-5 gap-2">
                     {colorPalette.map((color) => (
@@ -109,10 +198,29 @@ const ToolBar = () => {
     );
 
     return (
-        <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50">
+        <div 
+            ref={toolbarRef}
+            className={`fixed z-50 ${isDragging ? 'cursor-grabbing' : ''}`}
+            style={{
+                left: `${position.x}px`,
+                top: `${position.y}px`,
+                transform: isInitialized ? 'none' : 'translate(-50%, -50%)'
+            }}
+        >
             <div className="bg-white/95 backdrop-blur-sm border border-gray-200 shadow-lg rounded-lg p-3 animate-fade-in">
                 <div className="flex items-center gap-3">
                     
+                    {/* Drag Handle */}
+                    <div 
+                        ref={dragHandleRef}
+                        className={`flex flex-col items-center justify-center px-2 py-1 rounded cursor-grab hover:bg-gray-100 transition-colors ${isDragging ? 'cursor-grabbing bg-gray-200' : ''}`}
+                        onMouseDown={handleDragStart}
+                        title="Drag to move toolbar"
+                    >
+                        <GripVertical className="h-4 w-4 text-gray-400" />
+                    </div>
+
+                    <Separator orientation="vertical" className="h-8" />
 
                     {/* Drawing Tools */}
                     <div className="flex items-center gap-1">
@@ -153,7 +261,7 @@ const ToolBar = () => {
                             </Button>
                         </Tooltip>
 
-                        <div className="flex flex-col items-center gap-1 min-w-[80px]">
+                        <div className="flex flex-col items-center gap-1 min-w-[50px]">
                             <Slider
                                 value={[toolOptions.strokeWidth]}
                                 onValueChange={(value) => updateToolOptions('strokeWidth', value[0])}
@@ -241,17 +349,6 @@ const ToolBar = () => {
                             </Button>
                         </Tooltip>
 
-                        {/* <Tooltip content="Save canvas">
-                            <Button
-                                variant="default"
-                                size="sm"
-                                onClick={handleSaveCanvas}
-                                className="p-2"
-                            >
-                                <Save className="h-4 w-4" />
-                            </Button>
-                        </Tooltip> */}
-
                         <Tooltip content="Clear canvas">
                             <Button
                                 variant="destructive"
@@ -268,8 +365,8 @@ const ToolBar = () => {
             
             {/* Optional: Keyboard shortcuts hint */}
             <div className="mt-2 text-center">
-                <div className="text-xs text-gray-500 bg-white/80 px-2 py-1 rounded inline-block">
-                    Press P for Pen • E for Eraser • Ctrl+Z to Undo
+                <div className="text-xs text-neutral-800 bg-white/80 px-2 py-1 rounded inline-block">
+                    Press P for Pen • E for Eraser • Ctrl+Z to Undo • Drag ⋮⋮ to move
                 </div>
             </div>
         </div>
