@@ -51,5 +51,5 @@ export const useSocketManager = (socketCtx, roomid, callbacks) => {
       socket.off('CREATE_SNAPSHOT', handleCreateSnapshot);
       console.log('[SocketManager] Event listeners removed for socket:', socket.id);
     };
-  }, [socket,isConnected]);
+  }, [socket]);
 };
