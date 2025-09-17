@@ -2,12 +2,21 @@
 import { useEffect, useState, createContext, useMemo } from 'react';
 import { io } from 'socket.io-client';
 import { SocketContext } from './SocketContext';
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 
 export const SocketProvider = ({ children }) => {
 
-  const socket = useMemo(() => io(BACKEND_URL, { autoConnect: false }), []);
+  const socket = useMemo(() => io(BACKEND_URL, 
+    {
+  transports: ['websocket', 'polling'],
+  upgrade: true,
+  reconnection: true,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000,
+  timeout: 5000 
+}
+  ), []);
   const [isConnected, setIsConnected] = useState(socket.connected);
 
 

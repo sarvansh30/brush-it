@@ -2,11 +2,17 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const cors = require('cors');
 const Redis = require('ioredis');
+require('dotenv').config(); 
 
 const rateLimit = require('express-rate-limit');
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL,
+  methods: ["GET", "POST"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true, 
+}));
 app.use(express.json());
 
 // Redis client for API operations
