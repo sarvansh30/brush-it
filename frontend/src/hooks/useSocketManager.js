@@ -58,5 +58,5 @@ export const useSocketManager = (socketCtx, roomid, callbacks) => {
 
   // This effect ONLY depends on the socket instance and room ID.
   // It will NOT re-run when connection status changes.
-  }, [socket, roomid]); 
+  }, [socket.connected, roomid]); 
 };
