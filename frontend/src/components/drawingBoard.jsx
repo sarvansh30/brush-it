@@ -358,6 +358,10 @@ const DrawingBoard = () => {
             ref={canvasRef}
             width={state.canvasSize.width}
             height={state.canvasSize.height}
+             style={{
+    width: `${state.canvasSize.width}px`,
+    height: `${state.canvasSize.height}px`
+  }}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
