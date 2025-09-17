@@ -11,25 +11,17 @@ export const useSocketManager = (socketCtx, roomid, callbacks) => {
 
     if (isConnected) {
       console.log(`%c[CLIENT] EMITTING JOIN_ROOM EVENT. Room: ${roomid}`, 'color: #00A36C; font-weight: bold;');
-      socket.emit('JOIN_ROOM', roomid, (ack) => {
-        console.log(`%c[CLIENT] Received acknowledgment from server:`, 'color: #00A36C; font-weight: bold;', ack);
-        // You can use a callback here if needed, e.g., callbacksRef.current.onRoomJoined(ack);
-      });
+
+      socket.emit('JOIN_ROOM', roomid);
     } else {
       console.log(`[CLIENT] Socket not connected. Current status: ${isConnected}`);
     }
 
-    const handleRoomJoined = (data) => callbacksRef.current?.onRoomJoined?.(data);
-    const handleRoomJoinError = (error) => callbacksRef.current?.onRoomJoinError?.(error);
-
-    socket.on('ROOM_JOINED', handleRoomJoined);
-    socket.on('ROOM_JOIN_ERROR', handleRoomJoinError);
 
     return () => {
       if (socket) {
         console.log(`[SocketManager] 🚪 Cleaning up room-join listeners. Leaving room: ${roomid}`);
-        socket.off('ROOM_JOINED', handleRoomJoined);
-        socket.off('ROOM_JOIN_ERROR', handleRoomJoinError);
+
       }
     };
   }, [socket, roomid, isConnected]);
@@ -37,11 +29,14 @@ export const useSocketManager = (socketCtx, roomid, callbacks) => {
   useEffect(() => {
     if (!socket) return;
 
-    const handleCanvasHistory = (data) => callbacksRef.current?.onCanvasHistory?.(data);
+    const handleCanvasHistory = (data) => {
+      console.log('✅ Received CANVAS_HISTORY, dispatching to reducer.');
+      callbacksRef.current?.onCanvasHistory?.(data);
+    };
     const handleDrawAction = (data) => callbacksRef.current?.onDrawAction?.(data);
     const handleCanvasReset = () => callbacksRef.current?.onCanvasReset?.();
     const handleCreateSnapshot = (data) => callbacksRef.current?.onCreateSnapshot?.(data);
-
+    
     socket.on('CANVAS_HISTORY', handleCanvasHistory);
     socket.on('DRAW_ACTION', handleDrawAction);
     socket.on('CANVAS_RESET', handleCanvasReset);
@@ -56,5 +51,5 @@ export const useSocketManager = (socketCtx, roomid, callbacks) => {
       socket.off('CREATE_SNAPSHOT', handleCreateSnapshot);
       console.log('[SocketManager] Event listeners removed for socket:', socket.id);
     };
-  }, [socket]);
+  }, [socket,isConnected]);
 };
