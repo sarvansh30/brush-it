@@ -24,7 +24,7 @@ export const useSocketManager = (socketCtx, roomid, callbacks) => {
 
       }
     };
-  }, [socket, roomid, isConnected]);
+  }, [socket.connected, roomid]);
 
   useEffect(() => {
     if (!socket) return;

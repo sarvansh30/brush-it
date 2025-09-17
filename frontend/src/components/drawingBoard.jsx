@@ -272,7 +272,7 @@ const DrawingBoard = () => {
       console.error("Canvas initialization error:", err);
       dispatch({ type: "ERROR", payload: `Failed to initialize canvas: ${err.message}` });
     }
-  }, [state.status, state.canvasSize, canvasRef.current, color, strokeWidth]);
+  }, [state.status, state.canvasSize, canvasRef.current]);
 
   // Load history
   useEffect(() => {
