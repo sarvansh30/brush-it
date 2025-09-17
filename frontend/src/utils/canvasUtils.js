@@ -3,8 +3,10 @@ export const canvasUtils = {
     // Initialize canvas size and context properties
     initializeCanvas: (canvas, color, strokeWidth, roomWidth, roomHeight) => {
         const context = canvas.getContext("2d");
+
         // canvas.width = roomWidth;
         // canvas.height = roomHeight;
+
         
         context.strokeStyle = color;
         context.lineWidth = strokeWidth;

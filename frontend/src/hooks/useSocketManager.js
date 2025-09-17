@@ -11,14 +11,17 @@ export const useSocketManager = (socketCtx, roomid, callbacks) => {
 
     if (isConnected) {
       console.log(`%c[CLIENT] EMITTING JOIN_ROOM EVENT. Room: ${roomid}`, 'color: #00A36C; font-weight: bold;');
+
       socket.emit('JOIN_ROOM', roomid);
     } else {
       console.log(`[CLIENT] Socket not connected. Current status: ${isConnected}`);
     }
 
+
     return () => {
       if (socket) {
         console.log(`[SocketManager] 🚪 Cleaning up room-join listeners. Leaving room: ${roomid}`);
+
       }
     };
   }, [socket, roomid, isConnected]);

@@ -1,3 +1,4 @@
+
 import React, {
   useContext,
   useRef,
@@ -8,6 +9,7 @@ import React, {
 } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { ToolContext } from "../context/ToolContext";
+
 import { useDrawing } from "../hooks/useDrawing";
 import { canvasUtils } from "../utils/canvasUtils";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
@@ -179,6 +181,7 @@ const DrawingBoard = () => {
   const { toolOptions } = useContext(ToolContext);
   const { color, strokeWidth } = toolOptions;
   const { roomid } = useParams();
+
   const canvasRef = useRef(null);
   const socketCtx = useContext(SocketContext);
 
@@ -201,13 +204,16 @@ const DrawingBoard = () => {
     },
     onDrawAction: (data) => {
       console.log('✏️ [DRAW_ACTION] Received draw action.');
+
       const canvas = canvasRef.current;
       if (!canvas) return;
       const context = canvas.getContext("2d");
       canvasUtils.drawSegment(context, data);
     },
     onCanvasReset: () => {
+
       console.log('🧹 [CANVAS_RESET] Received reset signal.');
+
       const canvas = canvasRef.current;
       if (!canvas) return;
       canvasUtils.clearCanvas(canvas);
@@ -317,6 +323,7 @@ const DrawingBoard = () => {
   }, [state.status, state.history]);
 
   // Update canvas properties on tool change
+
   useEffect(() => {
     if (state.status !== LoadingStates.READY) return;
     const canvas = canvasRef.current;
@@ -329,6 +336,7 @@ const DrawingBoard = () => {
   const handleRetry = () => dispatch({ type: "RETRY" });
 
   // Drawing events
+
   const handleMouseDown = (e) => {
     if (state.status !== LoadingStates.READY) return;
     const ctx = canvasRef.current.getContext("2d");
@@ -378,6 +386,7 @@ const DrawingBoard = () => {
           error={state.error}
           onRetry={handleRetry}
         />
+
       )}
     </div>
   );
