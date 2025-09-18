@@ -6,50 +6,34 @@ export const useSocketManager = (socketCtx, roomid, callbacks) => {
   const callbacksRef = useRef(callbacks);
   callbacksRef.current = callbacks;
 
-  useEffect(() => {
-    if (!socket || !roomid) return;
+ useEffect(() => {
+  if (!socket || !roomid) return;
 
-    if (isConnected) {
-      console.log(`%c[CLIENT] EMITTING JOIN_ROOM EVENT. Room: ${roomid}`, 'color: #00A36C; font-weight: bold;');
+  // When the underlying WebSocket connects...
+  const onConnect = () => {
+    console.log(`[CLIENT] Connected (id=${socket.id}). Joining room ${roomid}`);
+    // 1) Join the room
+    socket.emit('JOIN_ROOM', roomid);
+    // 2) Attach all your callbacks
+    socket.on('CANVAS_HISTORY', callbacksRef.current.onCanvasHistory);
+    socket.on('DRAW_ACTION',    callbacksRef.current.onDrawAction);
+    socket.on('CANVAS_RESET',   callbacksRef.current.onCanvasReset);
+    socket.on('CREATE_SNAPSHOT',callbacksRef.current.onCreateSnapshot);
+  };
 
-      socket.emit('JOIN_ROOM', roomid);
-    } else {
-      console.log(`[CLIENT] Socket not connected. Current status: ${isConnected}`);
-    }
+  socket.on('connect', onConnect);
 
+  return () => {
+    // Clean up connect listener
+    socket.off('connect', onConnect);
+    // And tear down any event handlers you attached in onConnect
+    socket.off('CANVAS_HISTORY');
+    socket.off('DRAW_ACTION');
+    socket.off('CANVAS_RESET');
+    socket.off('CREATE_SNAPSHOT');
+    // Optionally notify server you’re leaving
+    // socket.emit('LEAVE_ROOM', roomid);
+  };
+}, [socket, roomid]);
 
-    return () => {
-      if (socket) {
-        console.log(`[SocketManager] 🚪 Cleaning up room-join listeners. Leaving room: ${roomid}`);
-
-      }
-    };
-  }, [socket, roomid, isConnected]);
-
-  useEffect(() => {
-    if (!socket) return;
-
-    const handleCanvasHistory = (data) => {
-      console.log('✅ Received CANVAS_HISTORY, dispatching to reducer.');
-      callbacksRef.current?.onCanvasHistory?.(data);
-    };
-    const handleDrawAction = (data) => callbacksRef.current?.onDrawAction?.(data);
-    const handleCanvasReset = () => callbacksRef.current?.onCanvasReset?.();
-    const handleCreateSnapshot = (data) => callbacksRef.current?.onCreateSnapshot?.(data);
-    
-    socket.on('CANVAS_HISTORY', handleCanvasHistory);
-    socket.on('DRAW_ACTION', handleDrawAction);
-    socket.on('CANVAS_RESET', handleCanvasReset);
-    socket.on('CREATE_SNAPSHOT', handleCreateSnapshot);
-
-    console.log('[SocketManager] Event listeners attached for socket:', socket.id);
-    
-    return () => {
-      socket.off('CANVAS_HISTORY', handleCanvasHistory);
-      socket.off('DRAW_ACTION', handleDrawAction);
-      socket.off('CANVAS_RESET', handleCanvasReset);
-      socket.off('CREATE_SNAPSHOT', handleCreateSnapshot);
-      console.log('[SocketManager] Event listeners removed for socket:', socket.id);
-    };
-  }, [socket,isConnected]);
 };
