@@ -1,39 +1,70 @@
 // useSocketManager.js
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 
 export const useSocketManager = (socketCtx, roomid, callbacks) => {
-  const { socket, isConnected } = socketCtx || {};
+  const { socket } = socketCtx || {};
   const callbacksRef = useRef(callbacks);
   callbacksRef.current = callbacks;
 
- useEffect(() => {
-  if (!socket || !roomid) return;
+  useEffect(() => {
+    if (!socket || !roomid) return;
 
-  // When the underlying WebSocket connects...
-  const onConnect = () => {
-    console.log(`[CLIENT] Connected (id=${socket.id}). Joining room ${roomid}`);
-    // 1) Join the room
-    socket.emit('JOIN_ROOM', roomid);
-    // 2) Attach all your callbacks
-    socket.on('CANVAS_HISTORY', callbacksRef.current.onCanvasHistory);
-    socket.on('DRAW_ACTION',    callbacksRef.current.onDrawAction);
-    socket.on('CANVAS_RESET',   callbacksRef.current.onCanvasReset);
-    socket.on('CREATE_SNAPSHOT',callbacksRef.current.onCreateSnapshot);
-  };
+    const onConnect = () => {
+      // Add delay to ensure Chrome's connection is fully ready
+      setTimeout(() => {
+        if (socket.connected && socket.id) {
+          console.log(`[CLIENT] Connected (id=${socket.id}). Joining room ${roomid}`);
+          socket.emit('JOIN_ROOM', roomid);
 
-  socket.on('connect', onConnect);
+          // Use wrapper functions that reference current callbacks
+          const handleCanvasHistory = (data) => callbacksRef.current?.onCanvasHistory?.(data);
+          const handleDrawAction = (data) => callbacksRef.current?.onDrawAction?.(data);
+          const handleCanvasReset = () => callbacksRef.current?.onCanvasReset?.();
+          const handleCreateSnapshot = (data) => callbacksRef.current?.onCreateSnapshot?.(data);
 
-  return () => {
-    // Clean up connect listener
-    socket.off('connect', onConnect);
-    // And tear down any event handlers you attached in onConnect
-    socket.off('CANVAS_HISTORY');
-    socket.off('DRAW_ACTION');
-    socket.off('CANVAS_RESET');
-    socket.off('CREATE_SNAPSHOT');
-    // Optionally notify server you’re leaving
-    // socket.emit('LEAVE_ROOM', roomid);
-  };
-}, [socket, roomid]);
+          socket.on('CANVAS_HISTORY', handleCanvasHistory);
+          socket.on('DRAW_ACTION', handleDrawAction);
+          socket.on('CANVAS_RESET', handleCanvasReset);
+          socket.on('CREATE_SNAPSHOT', handleCreateSnapshot);
 
+          // Store references for cleanup
+          socket._customHandlers = {
+            handleCanvasHistory,
+            handleDrawAction,
+            handleCanvasReset,
+            handleCreateSnapshot
+          };
+        } else {
+          console.log('⚠️ Connection not fully ready, retrying...');
+          // Retry after a short delay
+          setTimeout(() => {
+            if (socket.connected && socket.id) {
+              onConnect();
+            }
+          }, 100);
+        }
+      }, 50); // 50ms delay for Chrome
+    };
+
+    // 1) Attach connect handler
+    socket.on('connect', onConnect);
+
+    // 2) If already connected, trigger immediately
+    if (socket.connected && socket.id) {
+      onConnect();
+    }
+
+    return () => {
+      socket.off('connect', onConnect);
+      
+      // Clean up with stored handler references
+      if (socket._customHandlers) {
+        socket.off('CANVAS_HISTORY', socket._customHandlers.handleCanvasHistory);
+        socket.off('DRAW_ACTION', socket._customHandlers.handleDrawAction);
+        socket.off('CANVAS_RESET', socket._customHandlers.handleCanvasReset);
+        socket.off('CREATE_SNAPSHOT', socket._customHandlers.handleCreateSnapshot);
+        delete socket._customHandlers;
+      }
+    };
+  }, [socket, roomid]);
 };
