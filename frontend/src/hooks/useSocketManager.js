@@ -10,13 +10,12 @@ export const useSocketManager = (socketCtx, roomid, callbacks) => {
     if (!socket || !roomid) return;
 
     const onConnect = () => {
-      // Add delay to ensure Chrome's connection is fully ready
+
       setTimeout(() => {
         if (socket.connected && socket.id) {
           console.log(`[CLIENT] Connected (id=${socket.id}). Joining room ${roomid}`);
           socket.emit('JOIN_ROOM', roomid);
 
-          // Use wrapper functions that reference current callbacks
           const handleCanvasHistory = (data) => callbacksRef.current?.onCanvasHistory?.(data);
           const handleDrawAction = (data) => callbacksRef.current?.onDrawAction?.(data);
           const handleCanvasReset = () => callbacksRef.current?.onCanvasReset?.();
@@ -27,7 +26,6 @@ export const useSocketManager = (socketCtx, roomid, callbacks) => {
           socket.on('CANVAS_RESET', handleCanvasReset);
           socket.on('CREATE_SNAPSHOT', handleCreateSnapshot);
 
-          // Store references for cleanup
           socket._customHandlers = {
             handleCanvasHistory,
             handleDrawAction,
@@ -36,20 +34,19 @@ export const useSocketManager = (socketCtx, roomid, callbacks) => {
           };
         } else {
           console.log('⚠️ Connection not fully ready, retrying...');
-          // Retry after a short delay
+ 
           setTimeout(() => {
             if (socket.connected && socket.id) {
               onConnect();
             }
           }, 100);
         }
-      }, 50); // 50ms delay for Chrome
+      }, 50); 
     };
 
-    // 1) Attach connect handler
+
     socket.on('connect', onConnect);
 
-    // 2) If already connected, trigger immediately
     if (socket.connected && socket.id) {
       onConnect();
     }
@@ -57,7 +54,6 @@ export const useSocketManager = (socketCtx, roomid, callbacks) => {
     return () => {
       socket.off('connect', onConnect);
       
-      // Clean up with stored handler references
       if (socket._customHandlers) {
         socket.off('CANVAS_HISTORY', socket._customHandlers.handleCanvasHistory);
         socket.off('DRAW_ACTION', socket._customHandlers.handleDrawAction);
@@ -68,3 +64,4 @@ export const useSocketManager = (socketCtx, roomid, callbacks) => {
     };
   }, [socket, roomid]);
 };
+

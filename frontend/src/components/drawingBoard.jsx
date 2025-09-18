@@ -272,7 +272,7 @@ const DrawingBoard = () => {
       console.error("Canvas initialization error:", err);
       dispatch({ type: "ERROR", payload: `Failed to initialize canvas: ${err.message}` });
     }
-  }, [state.status, state.canvasSize, canvasRef.current, color, strokeWidth]);
+  }, [state.status, state.canvasSize, canvasRef.current]);
 
   // Load history
   useEffect(() => {
@@ -366,10 +366,6 @@ const DrawingBoard = () => {
             ref={canvasRef}
             width={state.canvasSize.width}
             height={state.canvasSize.height}
-             style={{
-    width: `${state.canvasSize.width}px`,
-    height: `${state.canvasSize.height}px`
-  }}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
