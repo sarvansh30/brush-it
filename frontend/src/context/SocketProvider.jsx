@@ -22,10 +22,10 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
   
-    const onConnect = () => {
-      console.log('Socket connected! ✅');
-      setIsConnected(true);
-    };
+    // const onConnect = () => {
+    //   console.log('Socket connected! ✅');
+    //   setIsConnected(true);
+    // };
 
 
     const onDisconnect = () => {
@@ -33,14 +33,14 @@ export const SocketProvider = ({ children }) => {
       setIsConnected(false);
     };
 
-    socket.on('connect', onConnect);
+    // socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
 
     socket.connect();
 
 
     return () => {
-      socket.off('connect', onConnect);
+      // socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.disconnect();
     };
