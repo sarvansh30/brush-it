@@ -1,4 +1,4 @@
-# Brush-It
+# Brush-It: Real-time collaborative drawing board.
 
 **Real-time collaborative drawing board**
 
@@ -13,6 +13,7 @@ Brush‑It is a lightweight web application that lets multiple users draw togeth
 * Room support (invite links).
 * State preservation so late-joining users can receive the current canvas.
 * Designed to scale using Redis pub/sub for multi-instance Socket.IO deployments.
+* Undo/Redo stacks on Redis for central control of changes.
 * Optional persistence to MongoDB for saving room history.
 
 ---
@@ -22,7 +23,7 @@ Brush‑It is a lightweight web application that lets multiple users draw togeth
 * **Frontend:** React.js, HTML5 Canvas, Socket.IO client
 * **Backend:** Node.js, Express, Socket.IO
 * **Realtime scaling:** Redis (pub/sub / socket.io-redis adapter)
-* **Persistence (optional):** MongoDB (mongoose)
+* **Persistence** MongoDB (mongoose)
 * **Deployment / Hosting:** Can be deployed to Vercel / Heroku / any Node host; Docker support possible
 
 ---
@@ -93,12 +94,11 @@ docker run -d --name brushit-redis -p 6379:6379 redis:7
 Create a `.env` file in `/backend` with the following (example):
 
 ```
-PORT=4000
-MONGO_URI=mongodb://localhost:27017/brushit
+PORT=3000
+MONGO_URL=mongodb://localhost:27017/brushit
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
-JWT_SECRET=change-me-if-needed
-NODE_ENV=development
+
 ```
 
 4. Install and run backend
@@ -126,21 +126,11 @@ npm run dev #for dev enviornment
 
 (Example variables to set in `/backend/.env`)
 
-* `PORT` — backend HTTP port (default 4000)
-* `MONGO_URI` — connection string to MongoDB
-* `REDIS_HOST` — Redis host (127.0.0.1 or service name in Docker)
-* `REDIS_PORT` — Redis port (default 6379)
-
----
-
-## Scaling notes
-
-* For horizontal scaling, run multiple instances of the backend behind a load balancer. Configure Socket.IO to use `socket.io-redis` (or `@socket.io/redis-adapter`) and point it to the same Redis instance so broadcast events are propagated across instances.
-* Persisting every single draw event to Mongo is expensive. Two common approaches:
-
-  * Persist snapshots occasionally (e.g., every N seconds or after a session end) as an image or compressed operation list.
-  * Persist a compact operation log for rooms and trim/compact periodically.
-
+* `PORT` — backend HTTP port 
+* `MONGO_URL` — connection string to MongoDB
+* `REDIS_HOST` — Redis host 
+* `REDIS_PORT` — Redis port 
+* `REDIS_PASSWORD` — Redis password
 ---
 
 
