@@ -418,9 +418,18 @@ export const initializeSocketIO = (server) => {
             redoStack: JSON.stringify(redoStack),
           });
 
+        //   let room = await Rooms.findOne({ roomid: roomid });
+        // if (!room) {
+        //   // Get dimensions from Redis
+        //   const roomData = await redisClient.hgetall(`room:${roomid}`);
+        //   const width = parseInt(roomData.canvasWidth, 10) || 1280;
+        //   const height = parseInt(roomData.canvasHeight, 10) || 720;
+
           const payload = {
             baseImageURL: sessionData[2] || null,
             history: undoStack,
+            width:1280,
+            height:720
           };
 
           // Publish to other servers

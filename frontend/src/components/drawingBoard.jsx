@@ -1,22 +1,19 @@
-
 import React, {
   useContext,
   useRef,
   useEffect,
   useReducer,
   useCallback,
-  useState,
 } from "react";
-import { useParams, useLocation } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { ToolContext } from "../context/ToolContext";
-
 import { useDrawing } from "../hooks/useDrawing";
 import { canvasUtils } from "../utils/canvasUtils";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useSocketManager } from "../hooks/useSocketManager";
 import { SocketContext } from "../context/SocketContext";
 
-// Simplified Loading states enum
+// Loading states enum
 const LoadingStates = {
   CONNECTING: "connecting",
   LOADING_CANVAS_DATA: "loading_canvas_data",
@@ -26,40 +23,77 @@ const LoadingStates = {
   ERROR: "error",
 };
 
-// Reducer initial state
+// ✅ FIXED: Initial state tracks if canvas is initialized
 const initialState = {
   status: LoadingStates.CONNECTING,
   error: null,
-  canvasSize: null,
+  width: null,
+  height: null,
   history: null,
+  isInitialized: false, // ✅ NEW: Track if canvas has been set up
 };
 
-// Updated Reducer function
+// ✅ FIXED: Reducer handles both initial load and updates
 function reducer(state, action) {
   switch (action.type) {
     case "CANVAS_DATA_RECEIVED":
+      console.log("🔄 Reducer: CANVAS_DATA_RECEIVED", {
+        isInitialized: state.isInitialized,
+        hasPayload: !!action.payload
+      });
+      
+      // ✅ If canvas already initialized, just update history without re-initializing
+      if (state.isInitialized) {
+        console.log("♻️ Canvas already initialized, updating history only");
+        return {
+          ...state,
+          history: {
+            baseImageURL: action.payload.baseImageURL,
+            history: action.payload.history,
+          },
+          // Status stays READY, no re-initialization
+        };
+      }
+      
+      // ✅ First time initialization
+      console.log("🆕 First time initialization");
       return {
         ...state,
         status: LoadingStates.INITIALIZING_CANVAS,
-        canvasSize: { width: action.payload.width, height: action.payload.height },
+        width: action.payload.width,
+        height: action.payload.height,
         history: {
           baseImageURL: action.payload.baseImageURL,
           history: action.payload.history,
-          width: action.payload.width,
-          height: action.payload.height,
         },
       };
 
     case "CANVAS_INITIALIZED":
-      return { ...state, status: LoadingStates.LOADING_HISTORY };
+      console.log("✅ Reducer: CANVAS_INITIALIZED");
+      return { 
+        ...state, 
+        status: LoadingStates.LOADING_HISTORY,
+        // ✅ Don't set isInitialized here - wait until history loads
+      };
 
     case "HISTORY_LOADED":
-      return { ...state, status: LoadingStates.READY };
+      console.log("✅ Reducer: HISTORY_LOADED");
+      return { 
+        ...state, 
+        status: LoadingStates.READY,
+        isInitialized: true // ✅ Set AFTER initial history loads
+      };
+
+    case "HISTORY_UPDATED":
+      console.log("♻️ Reducer: HISTORY_UPDATED (live update)");
+      return { ...state }; // Just trigger re-render
 
     case "ERROR":
+      console.error("❌ Reducer: ERROR", action.payload);
       return { ...state, status: LoadingStates.ERROR, error: action.payload };
 
     case "RETRY":
+      console.log("🔄 Reducer: RETRY");
       return { ...initialState };
 
     default:
@@ -189,31 +223,31 @@ const DrawingBoard = () => {
 
   // Drawing hooks
   const { startDrawing, draw, stopDrawing } = useDrawing(
-    socketCtx.socket, // Pass socket to useDrawing
+    socketCtx.socket,
     state.status === LoadingStates.READY,
     roomid,
     toolOptions
   );
   useKeyboardShortcuts(roomid);
 
-  // Implement the callbacks using useCallback for stability
+  // Socket callbacks
   const socketCallbacks = useCallback({
     onCanvasHistory: (data) => {
-      console.log('📥 [CANVAS_HISTORY] Received history data, dispatching CANVAS_DATA_RECEIVED.');
+      console.log('📥 [CANVAS_HISTORY] Received:', {
+        isUpdate: state.isInitialized,
+        historyLength: data.history?.length
+      });
       dispatch({ type: "CANVAS_DATA_RECEIVED", payload: data });
     },
     onDrawAction: (data) => {
       console.log('✏️ [DRAW_ACTION] Received draw action.');
-
       const canvas = canvasRef.current;
       if (!canvas) return;
       const context = canvas.getContext("2d");
       canvasUtils.drawSegment(context, data);
     },
     onCanvasReset: () => {
-
       console.log('🧹 [CANVAS_RESET] Received reset signal.');
-
       const canvas = canvasRef.current;
       if (!canvas) return;
       canvasUtils.clearCanvas(canvas);
@@ -237,93 +271,132 @@ const DrawingBoard = () => {
         }
       });
     },
-  }, [roomid, socketCtx.socket, socketCtx.isConnected]);
+  }, [roomid, socketCtx.socket, socketCtx.isConnected, state.isInitialized]);
   
-  // Pass the new, complete callbacks to useSocketManager
   useSocketManager(socketCtx, roomid, socketCallbacks);
 
-
-  // Canvas initialization effect - runs when canvas data is received
+  // ✅ Canvas initialization - ONLY runs on first load
   useEffect(() => {
     console.log("=== Canvas Initialization Effect ===");
-    console.log("state.status:", state.status);
-    console.log("state.canvasSize:", state.canvasSize);
-    console.log("canvasRef.current:", canvasRef.current);
+    console.log("Status:", state.status);
+    console.log("Width:", state.width, "Height:", state.height);
+    console.log("Canvas ref exists:", !!canvasRef.current);
+    console.log("Is initialized:", state.isInitialized);
 
-    if (state.status !== LoadingStates.INITIALIZING_CANVAS || !state.canvasSize || !canvasRef.current) {
-      console.log("Early return - conditions not met");
+    // ✅ Skip if already initialized
+    if (state.isInitialized) {
+      console.log("⏭️ Canvas already initialized, skipping");
+      return;
+    }
+
+    if (
+      state.status !== LoadingStates.INITIALIZING_CANVAS || 
+      !state.width || 
+      !state.height || 
+      !canvasRef.current
+    ) {
+      console.log("⏭️ Early return - conditions not met");
       return;
     }
 
     const canvas = canvasRef.current;
     
     try {
-      console.log('Initializing canvas with size:', state.canvasSize);
+      console.log('🎨 Initializing canvas with size:', state.width, 'x', state.height);
       canvasUtils.initializeCanvas(
         canvas,
         color,
         strokeWidth,
-        state.canvasSize.width,
-        state.canvasSize.height
+        state.width,
+        state.height
       );
-      console.log('Canvas initialized successfully');
+      console.log('✅ Canvas initialized successfully');
       dispatch({ type: "CANVAS_INITIALIZED" });
     } catch (err) {
-      console.error("Canvas initialization error:", err);
+      console.error("❌ Canvas initialization error:", err);
       dispatch({ type: "ERROR", payload: `Failed to initialize canvas: ${err.message}` });
     }
-  }, [state.status, state.canvasSize, canvasRef.current]);
+  }, [state.status, state.width, state.height, state.isInitialized, color, strokeWidth]);
 
-  // Load history
+  // ✅ Load history - handles BOTH initial load and updates
   useEffect(() => {
     console.log("=== History Loading Effect ===");
-    console.log("state.status:", state.status);
-    console.log("LoadingStates.LOADING_HISTORY:", LoadingStates.LOADING_HISTORY);
-    console.log("state.history:", state.history);
-    console.log("canvasRef.current:", canvasRef.current);
+    console.log("Status:", state.status);
+    console.log("Is initialized:", state.isInitialized);
+    console.log("History exists:", !!state.history);
 
-    if (state.status !== LoadingStates.LOADING_HISTORY || !state.history) {
-      console.log("History loading - early return, conditions not met");
+    if (!state.history) {
+      console.log("⏭️ No history data yet");
       return;
     }
 
-    const loadHistory = async () => {
-      console.log("Starting history loading...");
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      console.error("❌ Canvas not available");
+      return;
+    }
+
+    // ✅ Handle initial history load (during setup - isInitialized is still false)
+    if (state.status === LoadingStates.LOADING_HISTORY && !state.isInitialized) {
+      console.log("🖼️ Initial history load...");
       
-      const canvas = canvasRef.current;
-      if (!canvas) {
-        console.error("❌ Canvas not available for history loading");
-        dispatch({ type: "ERROR", payload: "Canvas not available for history loading" });
-        return;
-      }
+      const loadInitialHistory = async () => {
+        console.log("Loading initial history:", {
+          historyLength: state.history.history?.length || 0,
+          hasBaseImage: !!state.history.baseImageURL,
+          canvasDimensions: `${state.width}x${state.height}`
+        });
 
-      console.log("Canvas available, loading history...", {
-        historyLength: state.history.history?.length || 0,
-        baseImageURL: !!state.history.baseImageURL,
-        canvasSize: { width: canvas.width, height: canvas.height }
-      });
+        try {
+          await canvasUtils.loadCanvasHistory(
+            canvas,
+            state.history.baseImageURL,
+            state.history.history,
+            state.width,
+            state.height
+          );
+          console.log("✅ Initial history loaded successfully");
+          dispatch({ type: "HISTORY_LOADED" });
+        } catch (err) {
+          console.error("❌ History loading error:", err);
+          dispatch({ type: "ERROR", payload: `Failed to load history: ${err.message}` });
+        }
+      };
 
-      try {
-        await canvasUtils.loadCanvasHistory(
-          canvas,
-          state.history.baseImageURL,
-          state.history.history,
-          state.history.width,
-          state.history.height
-        );
-        console.log("✅ History loaded successfully");
-        dispatch({ type: "HISTORY_LOADED" });
-      } catch (err) {
-        console.error("❌ History loading error:", err);
-        dispatch({ type: "ERROR", payload: `Failed to load history: ${err.message}` });
-      }
-    };
+      loadInitialHistory();
+      return;
+    }
 
-    loadHistory();
-  }, [state.status, state.history]);
+    // ✅ Handle history updates (after undo/redo - isInitialized is true, status is READY)
+    if (state.isInitialized && state.status === LoadingStates.READY) {
+      console.log("♻️ Live history update (undo/redo)...");
+      
+      const updateHistory = async () => {
+        console.log("Updating history:", {
+          historyLength: state.history.history?.length || 0,
+          hasBaseImage: !!state.history.baseImageURL
+        });
+
+        try {
+          await canvasUtils.loadCanvasHistory(
+            canvas,
+            state.history.baseImageURL,
+            state.history.history,
+            state.width,
+            state.height
+          );
+          console.log("✅ History updated successfully");
+          dispatch({ type: "HISTORY_UPDATED" });
+        } catch (err) {
+          console.error("❌ History update error:", err);
+        }
+      };
+
+      updateHistory();
+    }
+  }, [state.status, state.history, state.width, state.height, state.isInitialized]);
 
   // Update canvas properties on tool change
-
   useEffect(() => {
     if (state.status !== LoadingStates.READY) return;
     const canvas = canvasRef.current;
@@ -336,7 +409,6 @@ const DrawingBoard = () => {
   const handleRetry = () => dispatch({ type: "RETRY" });
 
   // Drawing events
-
   const handleMouseDown = (e) => {
     if (state.status !== LoadingStates.READY) return;
     const ctx = canvasRef.current.getContext("2d");
@@ -357,15 +429,15 @@ const DrawingBoard = () => {
     if (state.status === LoadingStates.READY) stopDrawing();
   };
 
-  // Render the component
+  // Render
   return (
     <div className="w-screen h-screen bg-neutral-800 flex flex-col items-center justify-center p-4">
-      {state.canvasSize && (
+      {state.width && state.height && (
         <div className={`flex items-center justify-center ${state.status !== LoadingStates.READY ? 'invisible' : ''}`}>
           <canvas
             ref={canvasRef}
-            width={state.canvasSize.width}
-            height={state.canvasSize.height}
+            width={state.width}
+            height={state.height}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
@@ -382,7 +454,6 @@ const DrawingBoard = () => {
           error={state.error}
           onRetry={handleRetry}
         />
-
       )}
     </div>
   );

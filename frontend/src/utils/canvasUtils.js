@@ -195,12 +195,12 @@ export const canvasUtils = {
         const context = canvas.getContext("2d");
         
         // Only clear the content, not reset dimensions
-        context.clearRect(0, 0, canvas.width, canvas.height);
+        context.clearRect(0, 0, roomWidth, roomHeight);
 
         console.log('🎨 Loading canvas history:', { 
             baseImageURL: !!baseImageURL, 
             historyLength: history?.length || 0,
-            canvasSize: { width: canvas.width, height: canvas.height }
+            canvasSize: { width: roomWidth, height: roomHeight }
         });
 
         const drawHistory = () => {
